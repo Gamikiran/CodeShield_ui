@@ -1,0 +1,120 @@
+<div class="review-results-container">
+  <!-- MR / Branch Header -->
+  <div class="header">
+    <h2>Code Review Results</h2>
+    <div *ngIf="mergeRequest" class="mr-info">
+      <div>Merge Request: #{{ mergeRequest.iid }} – {{ mergeRequest.title }}</div>
+      <div>Branch: {{ mergeRequest.source_branch }} → {{ mergeRequest.target_branch }}</div>
+      <div>Author: {{ mergeRequest.author?.name || 'Unknown' }}</div>
+    </div>
+    <div *ngIf="branch && !mergeRequest" class="branch-info">
+      <div>Branch Analysis: {{ branch }}</div>
+    </div>
+  </div>
+
+  <!-- Severity Cards -->
+  <div class="summary-cards">
+    <div class="summary-card critical" (click)="selectSeverity('Critical')">
+      <div class="card-content">
+        <div class="icon">🚨</div>
+        <div class="count" [@fadeIn]>{{ getIssueCount('Critical') }}</div>
+        <div class="label">Critical</div>
+      </div>
+    </div>
+    <div class="summary-card high" (click)="selectSeverity('High')">
+      <div class="card-content">
+        <div class="icon">❗</div>
+        <div class="count" [@fadeIn]>{{ getIssueCount('High') }}</div>
+        <div class="label">High</div>
+      </div>
+    </div>
+    <div class="summary-card medium" (click)="selectSeverity('Medium')">
+      <div class="card-content">
+        <div class="icon">⚠️</div>
+        <div class="count" [@fadeIn]>{{ getIssueCount('Medium') }}</div>
+        <div class="label">Medium</div>
+      </div>
+    </div>
+    <div class="summary-card low" (click)="selectSeverity('Low')">
+      <div class="card-content">
+        <div class="icon">ℹ️</div>
+        <div class="count" [@fadeIn]>{{ getIssueCount('Low') }}</div>
+        <div class="label">Low</div>
+      </div>
+    </div>
+    <div class="summary-card total" (click)="selectSeverity('Total')">
+      <div class="card-content">
+        <div class="icon">📊</div>
+        <div class="count" [@fadeIn]>{{ getTotalIssues() }}</div>
+        <div class="label">Total</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Type Cards -->
+<!-- Type Cards (styled like severity cards) -->
+<div class="type-cards">
+  <div
+    class="summary-card"
+    *ngFor="let type of types"
+    [class.active]="activeType === type || (type === 'Total' && !activeType)"
+    (click)="selectType(type)"
+  >
+    <div class="card-content">
+      <div class="icon">🛠️</div>
+      <div class="count">
+        {{ type === 'Total' ? filteredIssues.length : getTypeCounts()[type] || 0 }}
+      </div>
+      <div class="label">{{ type }}</div>
+    </div>
+  </div>
+</div>
+
+
+
+
+
+
+  <!-- No Results Message -->
+  <div *ngIf="getFilteredIssues().length === 0" class="no-results">
+    No issues found! 🎉
+  </div>
+
+  <!-- Issue List -->
+<div *ngIf="activeSeverity && activeType">
+  <div *ngFor="let issue of getFilteredIssues()" class="file-result" @fadeIn>
+    <div class="file-header">
+      <span class="file-path">{{ issue.filePath }}</span>
+      <span
+        class="change-type"
+        [style.backgroundColor]="getSeverityColor(
+          issue.changeType === 'added'
+            ? 'Low'
+            : issue.changeType === 'modified'
+            ? 'Medium'
+            : 'High'
+        )"
+      >
+        {{ issue.changeType }}
+      </span>
+    </div>
+
+    <div class="issue" [style.borderLeftColor]="getSeverityColor(issue.severity)">
+      <div class="issue-header">
+        <span class="severity-icon">{{ getSeverityIcon(issue.severity) }}</span>
+        <span class="severity" [style.color]="getSeverityColor(issue.severity)">{{ issue.severity }}</span>
+        <span class="type">{{ issue.type }}</span>
+        <span class="line">Line {{ issue.lineNumber }}</span>
+        <span *ngIf="issue.ruleId" class="rule-id">{{ issue.ruleId }}</span>
+      </div>
+
+      <div class="message">{{ issue.message }}</div>
+      <div *ngIf="issue.sourceLine" class="source-code">
+        <code>{{ issue.sourceLine }}</code>
+      </div>
+      <div class="suggestion"><strong>💡 Suggestion:</strong> {{ issue.suggestion }}</div>
+      <div *ngIf="issue.confidence" class="confidence">Confidence: {{ issue.confidence }}</div>
+    </div>
+  </div>
+</div>
+</div>

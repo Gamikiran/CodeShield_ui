@@ -1,0 +1,37 @@
+<div class="selector-container">
+  <div class="header">
+    <button class="back-button" (click)="backToBranches()">
+      ← Back to Branches
+    </button>
+    <h2>Select a Merge Request</h2>
+  </div>
+
+  <div *ngIf="loading" class="loading-container">
+    <app-loading-spinner></app-loading-spinner>
+  </div>
+
+  <div *ngIf="error" class="error-message">
+    {{ error }}
+  </div>
+
+  <div *ngIf="!loading && !error">
+    <div *ngIf="branchName" class="branch-filter">
+      Showing merge requests for branch: <strong>{{ branchName }}</strong>
+    </div>
+
+    <div class="merge-request-list">
+      <div *ngFor="let mr of mergeRequests"
+           class="merge-request-item"
+           (click)="selectMergeRequest(mr)">
+        <div class="mr-title">#{{ mr.iid }}: {{ mr.title }}</div>
+        <div class="mr-branches">{{ mr.source_branch }} → {{ mr.target_branch }}</div>
+        <div class="mr-author">Author: {{ mr.author?.name || 'Unknown' }}</div>
+        <div class="mr-date">Created: {{ mr.created_at | date: 'medium' }}</div>
+      </div>
+    </div>
+
+    <div *ngIf="mergeRequests.length === 0" class="no-merge-requests">
+      No merge requests found for this branch.
+    </div>
+  </div>
+</div>

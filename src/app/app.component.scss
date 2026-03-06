@@ -1,0 +1,181 @@
+$app-primary: #1976d2;
+$app-success: #00C851;
+$app-error: #d32f2f;
+
+.app-container {
+  max-width: 1200px;
+  margin: 40px auto;
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+  animation: fadeIn 0.6s ease-in-out;
+}
+
+.steps-container {
+  padding: 25px;
+  background: linear-gradient(to right, #f4f6f8, #eaeef3);
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.steps {
+  display: flex;
+  justify-content: space-between;
+  position: relative;
+
+  &::before {
+    content: '';
+    position: absolute;
+    top: 25px;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background-color: #ccc;
+    z-index: 0;
+    transition: background-color 0.3s ease;
+  }
+
+  div {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    flex: 1;
+    cursor: pointer;
+    z-index: 1;
+    transition: all 0.3s ease-in-out;
+
+    .step-number {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background-color: #bbb;
+      color: white;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 600;
+      font-size: 1rem;
+      margin-bottom: 8px;
+      box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+      transition: all 0.3s ease-in-out;
+    }
+
+    .step-label {
+      font-size: 0.9rem;
+      color: #666;
+      text-align: center;
+      transition: color 0.3s ease;
+    }
+
+    &.active .step-number {
+      background-color: $app-primary;
+    }
+
+    &.active .step-label {
+      color: #333;
+      font-weight: 600;
+    }
+
+    &.completed .step-number {
+      background-color: $app-success;
+    }
+
+    &.completed .step-label {
+      color: $app-success;
+    }
+
+    &:hover {
+      transform: scale(1.03);
+    }
+  }
+}
+
+.content-container {
+  position: relative;
+  min-height: 400px;
+  overflow: hidden;
+
+  .content {
+    padding: 30px;
+    animation: slideIn 0.5s ease;
+  }
+}
+
+.loading-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(255, 255, 255, 0.9);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 100;
+  animation: fadeIn 0.3s ease-in;
+}
+
+.error-message {
+  position: absolute;
+  top: 20px;
+  left: 30px;
+  right: 30px;
+  padding: 15px 20px;
+  background-color: #fdecea;
+  color: $app-error;
+  border-radius: 6px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.95rem;
+  box-shadow: 0 4px 20px rgba(211, 47, 47, 0.1);
+  animation: fadeDown 0.4s ease-in-out;
+
+  .retry-button {
+    background-color: $app-error;
+    color: white;
+    border: none;
+    padding: 6px 14px;
+    border-radius: 4px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+
+    &:hover {
+      background-color: darken($app-error, 10%);
+    }
+  }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: scale(0.95); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+@keyframes slideIn {
+  from { transform: translateY(20px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+@keyframes fadeDown {
+  from { transform: translateY(-20px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+.fade-in {
+  animation: fadeIn 0.5s ease-in-out;
+}
+
+.slide-up {
+  animation: slideUp 0.5s ease-in-out;
+}
+
+.card-container {
+  background: #fff;
+  border-radius: 10px;
+  padding: 30px;
+  box-shadow: 0 5px 30px rgba(0, 0, 0, 0.05);
+  transition: all 0.3s ease;
+}
+

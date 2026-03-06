@@ -1,0 +1,46 @@
+<div class="selector-container">
+  <div class="header">
+    <button class="back-button" (click)="backToProjects()">← Back</button>
+    <h2>Select a Branch</h2>
+
+    <!-- ✅ Status Dropdown -->
+<!-- ✅ Status Dropdown -->
+<select (change)="onStatusSelect($event)">
+  <option *ngFor="let status of statuses" [value]="status">{{ status }}</option>
+</select>
+
+
+
+  </div>
+
+  <!-- Loading Skeleton -->
+  <div *ngIf="loading" class="loading-container">
+    <app-content-skeleton></app-content-skeleton>
+  </div>
+
+  <!-- Error Message -->
+  <div *ngIf="error" class="error-message">
+    {{ error }}
+  </div>
+
+  <!-- Branch List -->
+  <div *ngIf="!loading && !error">
+    <div class="branch-list">
+      <div
+        *ngFor="let branch of filteredBranches"
+        class="branch-item"
+        (click)="selectBranch(branch)"
+      >
+        <div class="branch-name">{{ branch.name }}</div>
+        <div class="branch-status">Status: {{ branch.status }}</div>
+        <div *ngIf="branch.commit?.author_name" class="branch-author">
+          Last commit by: {{ branch.commit.author_name }}
+        </div>
+      </div>
+    </div>
+
+    <div *ngIf="filteredBranches.length === 0" class="no-branches">
+      No branches found.
+    </div>
+  </div>
+</div>

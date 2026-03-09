@@ -33,6 +33,7 @@ export class AppComponent {
   selectedProject: GitLabProject | null = null;
   selectedBranch: GitLabBranch | null = null;
   selectedMergeRequest: GitLabMergeRequest | null = null;
+  selectedMR: any | null = null;
   reviewResults: CodeReviewResult[] = [];
   loading = false;
   error: string | null = null;
@@ -56,6 +57,7 @@ export class AppComponent {
 
   onMergeRequestSelected(mergeRequest: GitLabMergeRequest): void {
     this.selectedMergeRequest = mergeRequest;
+    this.selectedMR = mergeRequest;
     this.currentStep = 4;
     this.analyzeMergeRequest();
   }

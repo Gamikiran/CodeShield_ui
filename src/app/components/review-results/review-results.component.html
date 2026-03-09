@@ -1,120 +1,195 @@
-<div class="review-results-container">
-  <!-- MR / Branch Header -->
-  <div class="header">
-    <h2>Code Review Results</h2>
-    <div *ngIf="mergeRequest" class="mr-info">
-      <div>Merge Request: #{{ mergeRequest.iid }} – {{ mergeRequest.title }}</div>
-      <div>Branch: {{ mergeRequest.source_branch }} → {{ mergeRequest.target_branch }}</div>
-      <div>Author: {{ mergeRequest.author?.name || 'Unknown' }}</div>
-    </div>
-    <div *ngIf="branch && !mergeRequest" class="branch-info">
-      <div>Branch Analysis: {{ branch }}</div>
-    </div>
-  </div>
+<div class="page-shell">
 
-  <!-- Severity Cards -->
-  <div class="summary-cards">
-    <div class="summary-card critical" (click)="selectSeverity('Critical')">
-      <div class="card-content">
-        <div class="icon">🚨</div>
-        <div class="count" [@fadeIn]>{{ getIssueCount('Critical') }}</div>
-        <div class="label">Critical</div>
-      </div>
-    </div>
-    <div class="summary-card high" (click)="selectSeverity('High')">
-      <div class="card-content">
-        <div class="icon">❗</div>
-        <div class="count" [@fadeIn]>{{ getIssueCount('High') }}</div>
-        <div class="label">High</div>
-      </div>
-    </div>
-    <div class="summary-card medium" (click)="selectSeverity('Medium')">
-      <div class="card-content">
-        <div class="icon">⚠️</div>
-        <div class="count" [@fadeIn]>{{ getIssueCount('Medium') }}</div>
-        <div class="label">Medium</div>
-      </div>
-    </div>
-    <div class="summary-card low" (click)="selectSeverity('Low')">
-      <div class="card-content">
-        <div class="icon">ℹ️</div>
-        <div class="count" [@fadeIn]>{{ getIssueCount('Low') }}</div>
-        <div class="label">Low</div>
-      </div>
-    </div>
-    <div class="summary-card total" (click)="selectSeverity('Total')">
-      <div class="card-content">
-        <div class="icon">📊</div>
-        <div class="count" [@fadeIn]>{{ getTotalIssues() }}</div>
-        <div class="label">Total</div>
+  <!-- Topbar -->
+  <div class="topbar">
+    <div class="topbar-inner">
+      <div class="brand"><span>⚡</span><span class="brand-name">GitReview</span></div>
+      <div class="nav-steps">
+        <div class="nav-step done">
+          <span class="ns-dot done">✓</span>
+          <span class="ns-label">Project</span>
+          <span class="ns-value" *ngIf="mergeRequest">{{ mergeRequest?.projectName }}</span>
+        </div>
+        <span class="ns-sep">›</span>
+        <div class="nav-step done">
+          <span class="ns-dot done">✓</span>
+          <span class="ns-label">Branch</span>
+          <span class="ns-value" *ngIf="mergeRequest">{{ mergeRequest?.source_branch }}</span>
+        </div>
+        <span class="ns-sep">›</span>
+        <div class="nav-step done">
+          <span class="ns-dot done">✓</span>
+          <span class="ns-label">MR</span>
+          <span class="ns-value" *ngIf="mergeRequest">#{{ mergeRequest?.iid }}</span>
+        </div>
+        <span class="ns-sep">›</span>
+        <div class="nav-step active">
+          <span class="ns-dot active">4</span>
+          <span class="ns-label">Review</span>
+        </div>
       </div>
     </div>
   </div>
 
-  <!-- Type Cards -->
-<!-- Type Cards (styled like severity cards) -->
-<div class="type-cards">
-  <div
-    class="summary-card"
-    *ngFor="let type of types"
-    [class.active]="activeType === type || (type === 'Total' && !activeType)"
-    (click)="selectType(type)"
-  >
-    <div class="card-content">
-      <div class="icon">🛠️</div>
-      <div class="count">
-        {{ type === 'Total' ? filteredIssues.length : getTypeCounts()[type] || 0 }}
+  <div class="page-content">
+
+    <!-- MR Info Banner -->
+    <div class="mr-banner" *ngIf="mergeRequest">
+      <div class="mrb-left">
+        <span class="mrb-num">#{{ mergeRequest.iid }}</span>
+        <div>
+          <div class="mrb-title">{{ mergeRequest.title }}</div>
+          <div class="mrb-meta">
+            <span class="mrb-branch">{{ mergeRequest.source_branch }}</span>
+            <span class="mrb-arrow">→</span>
+            <span class="mrb-branch tgt">{{ mergeRequest.target_branch }}</span>
+            <span class="mrb-sep">·</span>
+            <span class="mrb-author">👤 {{ mergeRequest.author?.name || 'Unknown' }}</span>
+          </div>
+        </div>
       </div>
-      <div class="label">{{ type }}</div>
+      <div class="mrb-score" [ngClass]="getScoreClass()">
+        <div class="score-val">{{ getTotalIssues() }}</div>
+        <div class="score-lbl">Total Issues</div>
+      </div>
     </div>
-  </div>
-</div>
 
-
-
-
-
-
-  <!-- No Results Message -->
-  <div *ngIf="getFilteredIssues().length === 0" class="no-results">
-    No issues found! 🎉
-  </div>
-
-  <!-- Issue List -->
-<div *ngIf="activeSeverity && activeType">
-  <div *ngFor="let issue of getFilteredIssues()" class="file-result" @fadeIn>
-    <div class="file-header">
-      <span class="file-path">{{ issue.filePath }}</span>
-      <span
-        class="change-type"
-        [style.backgroundColor]="getSeverityColor(
-          issue.changeType === 'added'
-            ? 'Low'
-            : issue.changeType === 'modified'
-            ? 'Medium'
-            : 'High'
-        )"
+    <!-- Severity Cards -->
+    <div class="section-label">📊 Issues by Severity</div>
+    <div class="severity-grid">
+      <div
+        class="sev-card critical"
+        [class.active]="activeSeverity === 'Critical'"
+        (click)="selectSeverity('Critical')"
       >
-        {{ issue.changeType }}
-      </span>
+        <div class="sc-icon">🚨</div>
+        <div class="sc-count" [@fadeIn]>{{ getIssueCount('Critical') }}</div>
+        <div class="sc-label">Critical</div>
+      </div>
+      <div
+        class="sev-card high"
+        [class.active]="activeSeverity === 'High'"
+        (click)="selectSeverity('High')"
+      >
+        <div class="sc-icon">❗</div>
+        <div class="sc-count" [@fadeIn]>{{ getIssueCount('High') }}</div>
+        <div class="sc-label">High</div>
+      </div>
+      <div
+        class="sev-card medium"
+        [class.active]="activeSeverity === 'Medium'"
+        (click)="selectSeverity('Medium')"
+      >
+        <div class="sc-icon">⚠️</div>
+        <div class="sc-count" [@fadeIn]>{{ getIssueCount('Medium') }}</div>
+        <div class="sc-label">Medium</div>
+      </div>
+      <div
+        class="sev-card low"
+        [class.active]="activeSeverity === 'Low'"
+        (click)="selectSeverity('Low')"
+      >
+        <div class="sc-icon">ℹ️</div>
+        <div class="sc-count" [@fadeIn]>{{ getIssueCount('Low') }}</div>
+        <div class="sc-label">Low</div>
+      </div>
+      <div
+        class="sev-card total"
+        [class.active]="activeSeverity === 'Total'"
+        (click)="selectSeverity('Total')"
+      >
+        <div class="sc-icon">📊</div>
+        <div class="sc-count" [@fadeIn]>{{ getTotalIssues() }}</div>
+        <div class="sc-label">Total</div>
+      </div>
     </div>
 
-    <div class="issue" [style.borderLeftColor]="getSeverityColor(issue.severity)">
-      <div class="issue-header">
-        <span class="severity-icon">{{ getSeverityIcon(issue.severity) }}</span>
-        <span class="severity" [style.color]="getSeverityColor(issue.severity)">{{ issue.severity }}</span>
-        <span class="type">{{ issue.type }}</span>
-        <span class="line">Line {{ issue.lineNumber }}</span>
-        <span *ngIf="issue.ruleId" class="rule-id">{{ issue.ruleId }}</span>
+    <!-- Type Cards -->
+    <div *ngIf="types.length > 0">
+      <div class="section-label">🛠️ Issues by Type
+        <span class="section-sub">— filtered by: <strong>{{ activeSeverity }}</strong></span>
       </div>
-
-      <div class="message">{{ issue.message }}</div>
-      <div *ngIf="issue.sourceLine" class="source-code">
-        <code>{{ issue.sourceLine }}</code>
+      <div class="type-grid">
+        <div
+          *ngFor="let type of types"
+          class="type-card"
+          [class.active]="activeType === type"
+          (click)="selectType(type)"
+        >
+          <div class="tc-count">{{ getTypeCounts()[type] || 0 }}</div>
+          <div class="tc-label">{{ type }}</div>
+        </div>
       </div>
-      <div class="suggestion"><strong>💡 Suggestion:</strong> {{ issue.suggestion }}</div>
-      <div *ngIf="issue.confidence" class="confidence">Confidence: {{ issue.confidence }}</div>
     </div>
+
+    <!-- Active Filter Bar -->
+    <div class="filter-bar" *ngIf="activeSeverity">
+      <div class="fb-filters">
+        <span class="fb-tag" [ngClass]="activeSeverity.toLowerCase()">
+          {{ getSeverityIcon(activeSeverity) }} {{ activeSeverity }}
+          <button class="fb-clear" (click)="selectSeverity('Total')">✕</button>
+        </span>
+        <span class="fb-tag type" *ngIf="activeType">
+          🛠️ {{ activeType }}
+          <button class="fb-clear" (click)="selectType('Total')">✕</button>
+        </span>
+      </div>
+      <span class="fb-count">{{ getFilteredIssues().length }} issues</span>
+    </div>
+
+    <!-- No Results -->
+    <div *ngIf="getFilteredIssues().length === 0 && activeSeverity && activeType" class="empty-card success">
+      <span class="empty-ico">🎉</span>
+      <h3>No issues found!</h3>
+      <p>No {{ activeType }} issues at {{ activeSeverity }} severity</p>
+    </div>
+
+    <!-- Issue List -->
+    <div *ngIf="activeSeverity && activeType" class="issue-list">
+      <div
+        *ngFor="let issue of getFilteredIssues()"
+        class="issue-card"
+        [ngClass]="issue.severity.toLowerCase()"
+        @fadeIn
+      >
+        <!-- Issue Card Header -->
+        <div class="ic-header">
+          <div class="ic-file">
+            <span class="file-icon">📄</span>
+            <span class="file-path">{{ issue.filePath }}</span>
+            <span class="change-badge" [ngClass]="issue.changeType">{{ issue.changeType }}</span>
+          </div>
+          <div class="ic-badges">
+            <span class="sev-badge" [ngClass]="issue.severity.toLowerCase()">
+              {{ getSeverityIcon(issue.severity) }} {{ issue.severity }}
+            </span>
+            <span class="type-chip">{{ issue.type }}</span>
+            <span class="line-chip">Line {{ issue.lineNumber }}</span>
+            <span class="rule-chip" *ngIf="issue.ruleId">{{ issue.ruleId }}</span>
+          </div>
+        </div>
+
+        <!-- Message -->
+        <div class="ic-message">{{ issue.message }}</div>
+
+        <!-- Source Code -->
+        <div class="ic-code" *ngIf="issue.sourceLine">
+          <pre><code>{{ issue.sourceLine }}</code></pre>
+        </div>
+
+        <!-- Suggestion -->
+        <div class="ic-suggestion">
+          <span class="sug-icon">💡</span>
+          <div><strong>Suggestion</strong><p>{{ issue.suggestion }}</p></div>
+        </div>
+
+        <!-- Confidence -->
+        <div class="ic-confidence" *ngIf="issue.confidence">
+          <span class="conf-dot"></span>
+          Confidence: <strong>{{ issue.confidence }}</strong>
+        </div>
+      </div>
+    </div>
+
   </div>
-</div>
 </div>

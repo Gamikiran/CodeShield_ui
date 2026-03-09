@@ -1,46 +1,121 @@
-<div class="selector-container">
-  <div class="header">
-    <button class="back-button" (click)="backToProjects()">← Back</button>
-    <h2>Select a Branch</h2>
+<div class="page-shell">
 
-    <!-- ✅ Status Dropdown -->
-<!-- ✅ Status Dropdown -->
-<select (change)="onStatusSelect($event)">
-  <option *ngFor="let status of statuses" [value]="status">{{ status }}</option>
-</select>
-
-
-
+  <!-- Topbar -->
+  <div class="topbar">
+    <div class="topbar-inner">
+      <div class="brand">
+        <span>⚡</span>
+        <span class="brand-name">GitReview</span>
+      </div>
+      <div class="nav-steps">
+        <div class="nav-step done">
+          <span class="ns-dot done">✓</span>
+          <span class="ns-label">Project</span>
+          <span class="ns-value" *ngIf="selectedProject">{{ selectedProject.name }}</span>
+        </div>
+        <span class="ns-sep">›</span>
+        <div class="nav-step active">
+          <span class="ns-dot active">2</span>
+          <span class="ns-label">Branch</span>
+        </div>
+        <span class="ns-sep">›</span>
+        <div class="nav-step">
+          <span class="ns-dot">3</span>
+          <span class="ns-label">Merge Request</span>
+        </div>
+        <span class="ns-sep">›</span>
+        <div class="nav-step">
+          <span class="ns-dot">4</span>
+          <span class="ns-label">Review</span>
+        </div>
+      </div>
+    </div>
   </div>
 
-  <!-- Loading Skeleton -->
-  <div *ngIf="loading" class="loading-container">
-    <app-content-skeleton></app-content-skeleton>
-  </div>
+  <div class="page-content">
 
-  <!-- Error Message -->
-  <div *ngIf="error" class="error-message">
-    {{ error }}
-  </div>
+    <!-- Project Context Banner -->
+    <div class="context-banner" *ngIf="selectedProject">
+      <div class="cb-left">
+        <div class="cb-avatar">{{ selectedProject.name?.charAt(0)?.toUpperCase() }}</div>
+        <div>
+          <div class="cb-eyebrow">Selected Project</div>
+          <div class="cb-name">{{ selectedProject.name }}</div>
+        </div>
+      </div>
+      <span class="cb-id"># {{ selectedProject.id }}</span>
+    </div>
 
-  <!-- Branch List -->
-  <div *ngIf="!loading && !error">
-    <div class="branch-list">
-      <div
-        *ngFor="let branch of filteredBranches"
-        class="branch-item"
-        (click)="selectBranch(branch)"
-      >
-        <div class="branch-name">{{ branch.name }}</div>
-        <div class="branch-status">Status: {{ branch.status }}</div>
-        <div *ngIf="branch.commit?.author_name" class="branch-author">
-          Last commit by: {{ branch.commit.author_name }}
+    <!-- Back + Header Row -->
+    <div class="page-header">
+      <button class="btn-back" (click)="backToProjects()">← Back to Projects</button>
+      <div class="header-row">
+        <div>
+          <h1 class="page-title">Select a Branch</h1>
+          <p class="page-sub">Filter by status and pick the branch to review</p>
+        </div>
+        <!-- Filter Pills -->
+        <div class="filter-group">
+          <button
+            *ngFor="let status of statuses"
+            class="filter-pill"
+            [class.active]="selectedStatus === status"
+            (click)="onStatusChange(status)"
+          >
+            <span class="pill-dot" [ngClass]="status.toLowerCase()"></span>
+            {{ status }}
+            <span class="pill-count">{{ status === 'All' ? branches.length : getCountByStatus(status) }}</span>          </button>
         </div>
       </div>
     </div>
 
-    <div *ngIf="filteredBranches.length === 0" class="no-branches">
-      No branches found.
+    <!-- Skeletons -->
+    <div *ngIf="loading" class="branch-list">
+      <div class="branch-card skeleton" *ngFor="let i of [1,2,3,4,5]">
+        <div class="sk-icon"></div>
+        <div class="sk-body">
+          <div class="sk-line wide"></div>
+          <div class="sk-line narrow"></div>
+        </div>
+        <div class="sk-pill"></div>
+      </div>
     </div>
+
+    <!-- Error -->
+    <div *ngIf="error && !loading" class="alert-card">
+      <span>⚠️</span>
+      <div><strong>Failed to load branches</strong><p>{{ error }}</p></div>
+      <button (click)="loadBranches()">↺ Retry</button>
+    </div>
+
+    <!-- Branch List -->
+    <div *ngIf="!loading && !error" class="branch-list">
+      <div
+        *ngFor="let branch of filteredBranches"
+        class="branch-card"
+        (click)="selectBranch(branch)"
+      >
+        <div class="bc-icon">⎇</div>
+        <div class="bc-info">
+          <div class="bc-name">{{ branch.name }}</div>
+          <div class="bc-author" *ngIf="branch.commit?.author_name">
+            👤 {{ branch.commit.author_name }}
+          </div>
+        </div>
+        <div class="status-badge" [ngClass]="branch.status.toLowerCase()">
+          <span class="sb-dot"></span>
+          {{ branch.status }}
+        </div>
+        <div class="bc-arrow">→</div>
+      </div>
+    </div>
+
+    <!-- Empty -->
+    <div *ngIf="!loading && !error && filteredBranches.length === 0" class="empty-card">
+      <span class="empty-ico">🌿</span>
+      <h3>No branches found</h3>
+      <p>Try a different status filter</p>
+    </div>
+
   </div>
 </div>

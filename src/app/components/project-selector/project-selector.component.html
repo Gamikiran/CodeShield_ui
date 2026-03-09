@@ -1,21 +1,71 @@
-<div class="selector-container">
-  <h2 class="title">Select a Project</h2>
+<div class="page-shell">
 
-    <div *ngIf="loading" class="loading-container fade-in">
-    <app-content-skeleton></app-content-skeleton>
-  </div>
-  
-  <div class="project-list">
-    <div class="project-item" *ngFor="let project of projects "  (click)="selectProject(project)">
-      <div class="project-info">
-        <div class="project-name">{{ project.name }}</div>
-        <div class="project-id">ID: {{ project.id }}</div>
-      </div>
-      <div class="select-icon">&#x279C;</div> <!-- Right arrow symbol -->
+  <!-- Top Nav Bar -->
+
+  <div class="page-content">
+
+    <!-- Hero -->
+    <div class="hero">
+      <span class="hero-badge">🦊 GitLab Code Review</span>
+      <h1 class="hero-title">Select a Project</h1>
+      <p class="hero-sub">Choose a repository to begin your code review</p>
     </div>
-  </div>
 
-  <div class="no-projects" *ngIf="!projects?.length">
-    No projects available.
+    <!-- Stats Bar -->
+    <div class="stats-bar" *ngIf="!loading && !error && projects?.length">
+      <div class="stat-item">
+        <span class="stat-num">{{ projects.length }}</span>
+        <span class="stat-lbl">Projects Available</span>
+      </div>
+    </div>
+
+    <!-- Loading Skeletons -->
+    <div *ngIf="loading" class="project-grid">
+      <div class="project-card skeleton" *ngFor="let i of [1,2,3,4,5,6]">
+        <div class="sk-avatar"></div>
+        <div class="sk-body">
+          <div class="sk-line wide"></div>
+          <div class="sk-line narrow"></div>
+        </div>
+        <div class="sk-chip"></div>
+      </div>
+    </div>
+
+    <!-- Error -->
+    <div *ngIf="error && !loading" class="alert-card">
+      <span>⚠️</span>
+      <div>
+        <strong>Failed to load projects</strong>
+        <p>{{ error }}</p>
+      </div>
+      <button (click)="loadProjects()">↺ Retry</button>
+    </div>
+
+    <!-- Projects Grid -->
+    <div *ngIf="!loading && !error" class="project-grid">
+      <div
+        *ngFor="let project of projects; trackBy: trackById"
+        class="project-card"
+        [class.is-selected]="selectedProject?.id === project.id"
+        (click)="selectProject(project)"
+      >
+        <div class="pc-avatar">{{ project.name?.charAt(0)?.toUpperCase() }}</div>
+        <div class="pc-info">
+          <div class="pc-name">{{ project.name }}</div>
+          <div class="pc-id">
+            <span class="chip"># {{ project.id }}</span>
+          </div>
+        </div>
+        <div class="pc-cta">Open →</div>
+      </div>
+    </div>
+
+    <!-- Empty -->
+    <div *ngIf="!loading && !error && !projects?.length" class="empty-card">
+      <span class="empty-ico">📁</span>
+      <h3>No projects found</h3>
+      <p>No repositories are available to review</p>
+    </div>
+
   </div>
 </div>

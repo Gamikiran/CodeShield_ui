@@ -1,42 +1,55 @@
 <div class="app-container">
   <!-- Step Progress Bar -->
-  <div class="steps-container">
-    <div class="steps">
-      <div 
-        class="step fade-in" 
-        [class.active]="currentStep >= 1" 
-        [class.completed]="currentStep > 1"
-        (click)="currentStep > 1 && backToProjects()"
-      >
-        <span class="step-number">1</span>
-        <span class="step-label">Select Project</span>
-      </div>
+  <div class="nav-steps">
 
-      <div 
-        class="step fade-in" 
-        [class.active]="currentStep >= 2" 
-        [class.completed]="currentStep > 2"
-        (click)="currentStep > 2 && backToBranches()"
-      >
-        <span class="step-number">2</span>
-        <span class="step-label">Select Branch</span>
-      </div>
-
-      <div 
-        class="step fade-in" 
-        [class.active]="currentStep >= 3" 
-        [class.completed]="currentStep > 3"
-        (click)="currentStep > 3 && backToMergeRequests()"
-      >
-        <span class="step-number">3</span>
-        <span class="step-label">Select Merge Request</span>
-      </div>
-
-      <div class="step fade-in" [class.active]="currentStep >= 4">
-        <span class="step-number">4</span>
-        <span class="step-label">Review Results</span>
+    <div class="nav-step" [class.done]="currentStep > 1" [class.active]="currentStep === 1">
+      <span class="ns-dot" [class.done]="currentStep > 1" [class.active]="currentStep === 1">
+        <span *ngIf="currentStep <= 1">1</span>
+        <span *ngIf="currentStep > 1">✓</span>
+      </span>
+      <div class="ns-info">
+        <span class="ns-label">Select Project</span>
+        <!-- ✅ Show project name once selected -->
+        <span class="ns-value" *ngIf="selectedProject">{{ selectedProject.name }}</span>
       </div>
     </div>
+  
+    <div class="step-line" [class.filled]="currentStep > 1"></div>
+  
+    <div class="nav-step" [class.done]="currentStep > 2" [class.active]="currentStep === 2">
+      <span class="ns-dot" [class.done]="currentStep > 2" [class.active]="currentStep === 2">
+        <span *ngIf="currentStep <= 2">2</span>
+        <span *ngIf="currentStep > 2">✓</span>
+      </span>
+      <div class="ns-info">
+        <span class="ns-label">Select Branch</span>
+        <!-- ✅ Show branch name once selected -->
+        <span class="ns-value" *ngIf="selectedBranch">{{ selectedBranch.name }}</span>
+      </div>
+    </div>
+  
+    <div class="step-line" [class.filled]="currentStep > 2"></div>
+  
+    <div class="nav-step" [class.done]="currentStep > 3" [class.active]="currentStep === 3">
+      <span class="ns-dot" [class.done]="currentStep > 3" [class.active]="currentStep === 3">
+        <span *ngIf="currentStep <= 3">3</span>
+        <span *ngIf="currentStep > 3">✓</span>
+      </span>
+      <div class="ns-info">
+        <span class="ns-label">Select Merge Request</span>
+        <span class="ns-value" *ngIf="selectedMR">#{{ selectedMR.iid }}</span>
+      </div>
+    </div>
+  
+    <div class="step-line" [class.filled]="currentStep > 3"></div>
+  
+    <div class="nav-step" [class.active]="currentStep === 4">
+      <span class="ns-dot" [class.active]="currentStep === 4">4</span>
+      <div class="ns-info">
+        <span class="ns-label">Review Results</span>
+      </div>
+    </div>
+  
   </div>
 
   <!-- Step Content -->
@@ -71,13 +84,14 @@
       ></app-branch-selection>
 
       <!-- Step 3: Select Merge Request -->
-      <app-merge-request-selector 
-        *ngIf="currentStep === 3"
-        [projectId]="selectedProject?.id"
-        [branchName]="selectedBranch?.name"
-        (mergeRequestSelected)="onMergeRequestSelected($event)"
-        (goBack)="backToBranches()">
-      </app-merge-request-selector>
+      <app-merge-request-selector
+  *ngIf="currentStep === 3"
+  [projectId]="selectedProject?.id"
+  [branchName]="selectedBranch?.name"
+  [selectedProject]="selectedProject"
+  (mergeRequestSelected)="onMergeRequestSelected($event)"
+  (goBack)="currentStep = 2"
+></app-merge-request-selector>
 
       <!-- Step 4: Review Results -->
       <app-review-results 

@@ -146,6 +146,26 @@ $app-error: #d32f2f;
       background-color: darken($app-error, 10%);
     }
   }
+  .ns-info {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  
+  .ns-value {
+    font-size: 11px;
+    font-weight: 600;
+    color: #10b981;
+    background: rgba(16, 185, 129, 0.08);
+    border: 1px solid rgba(16, 185, 129, 0.2);
+    border-radius: 6px;
+    padding: 1px 7px;
+    font-family: 'JetBrains Mono', monospace;
+    max-width: 110px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
 }
 
 @keyframes fadeIn {

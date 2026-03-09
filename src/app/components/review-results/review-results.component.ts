@@ -12,8 +12,8 @@ import { CodeReviewResult } from '../../models/code-review.models';
   animations: [
     trigger('fadeIn', [
       transition(':enter', [
-        style({ opacity: 0, transform: 'translateY(10px)' }),
-        animate('500ms ease', style({ opacity: 1, transform: 'translateY(0)' })),
+        style({ opacity: 0, transform: 'translateY(8px)' }),
+        animate('300ms ease', style({ opacity: 1, transform: 'translateY(0)' })),
       ]),
     ]),
   ],
@@ -22,51 +22,58 @@ export class ReviewResultsComponent {
   @Input() results: CodeReviewResult[] = [];
   @Input() mergeRequest?: any;
   @Input() branch?: string;
-filteredIssues: any[] = [];
+
+  filteredIssues: any[] = [];
   activeSeverity: string | null = null;
   activeType: string | null = null;
   types: string[] = [];
 
- ngOnChanges(changes: SimpleChanges): void {
+  ngOnChanges(changes: SimpleChanges): void {
     if (changes['results'] && this.results?.length > 0 && !this.activeSeverity) {
       this.selectSeverity('Total');
     }
   }
+
   getTypeCounts(): { [key: string]: number } {
-  const filteredIssues = this.activeSeverity === 'Total'
-    ? this.results.flatMap(r => r.issues)
-    : this.results.flatMap(r => r.issues.filter(i => i.severity === this.activeSeverity));
+    const issues = this.activeSeverity === 'Total'
+      ? this.results.flatMap(r => r.issues)
+      : this.results.flatMap(r => r.issues.filter(i => i.severity === this.activeSeverity));
+    return issues.reduce((acc, issue) => {
+      acc[issue.type] = (acc[issue.type] || 0) + 1;
+      return acc;
+    }, {} as { [key: string]: number });
+  }
 
-  return filteredIssues.reduce((acc, issue) => {
-    acc[issue.type] = (acc[issue.type] || 0) + 1;
-    return acc;
-  }, {} as { [key: string]: number });
-}
-
-  // Get issue count for each severity
   getIssueCount(severity: string): number {
     return this.results.reduce((count, result) => {
-      const matchingIssues = severity === 'Total'
-        ? result.issues
-        : result.issues.filter(i => i.severity === severity);
-      return count + matchingIssues.length;
+      const matching = severity === 'Total' ? result.issues : result.issues.filter(i => i.severity === severity);
+      return count + matching.length;
     }, 0);
   }
 
   getTotalIssues(): number {
     return ['Critical', 'High', 'Medium', 'Low'].reduce(
-      (sum, severity) => sum + this.getIssueCount(severity),
-      0
+      (sum, sev) => sum + this.getIssueCount(sev), 0
     );
+  }
+
+  // ✅ Used by the MR banner score card to show risk-based color
+  getScoreClass(): string {
+    const total = this.getTotalIssues();
+    const critical = this.getIssueCount('Critical');
+    const high = this.getIssueCount('High');
+    if (critical > 0 || high > 2) return 'high-risk';
+    if (total > 5) return 'med-risk';
+    return 'low-risk';
   }
 
   getSeverityColor(severity: string): string {
     switch (severity) {
-      case 'Critical': return '#ff4444';
-      case 'High': return '#ff8800';
-      case 'Medium': return '#ffbb33';
-      case 'Low': return '#00C851';
-      default: return '#aaaaaa';
+      case 'Critical': return '#ef4444';
+      case 'High': return '#f97316';
+      case 'Medium': return '#f59e0b';
+      case 'Low': return '#10b981';
+      default: return '#94a3b8';
     }
   }
 
@@ -76,77 +83,56 @@ filteredIssues: any[] = [];
       case 'High': return '❗';
       case 'Medium': return '⚠️';
       case 'Low': return 'ℹ️';
-      default: return 'ℹ️';
+      default: return '📊';
     }
   }
 
-  // Called when a severity card is clicked
-selectSeverity(severity: string): void {
-  this.activeSeverity = severity;
-  this.activeType = null;
-  this.updateFilteredIssues();
-  const filtered = severity === 'Total'
-    ? this.results.flatMap(r => r.issues)
-    : this.results.flatMap(r => r.issues.filter(i => i.severity === severity));
-  const uniqueTypes = [...new Set(filtered.map(i => i.type))];
-  this.types = [...uniqueTypes];
-}
+  selectSeverity(severity: string): void {
+    this.activeSeverity = severity;
+    this.activeType = null;
+    this.updateFilteredIssues();
+    const filtered = severity === 'Total'
+      ? this.results.flatMap(r => r.issues)
+      : this.results.flatMap(r => r.issues.filter(i => i.severity === severity));
+    this.types = [...new Set(filtered.map(i => i.type))];
+  }
 
+  selectType(type: string): void {
+    this.activeType = type === 'Total' ? null : type;
+    this.updateFilteredIssues();
+  }
 
-  // Called when a type card is clicked
-selectType(type: string): void {
-  this.activeType = type === 'Total' ? null : type;
-  this.updateFilteredIssues();
-}
+  updateFilteredIssues(): void {
+    this.filteredIssues = this.results.flatMap(result =>
+      result.issues
+        .filter(issue =>
+          (this.activeSeverity === 'Total' || issue.severity === this.activeSeverity) &&
+          (!this.activeType || issue.type === this.activeType)
+        )
+        .map(issue => ({ ...issue, filePath: result.filePath, changeType: result.changeType }))
+    );
+  }
 
-updateFilteredIssues(): void {
-  this.filteredIssues = this.results.flatMap(result =>
-    result.issues
-      .filter(issue =>
-        (this.activeSeverity === 'Total' || issue.severity === this.activeSeverity) &&
-        (!this.activeType || issue.type === this.activeType)
-      )
-      .map(issue => ({
-        ...issue,
-        filePath: result.filePath,
-        changeType: result.changeType
-      }))
-  );
-}
+  getFilteredIssues(): any[] {
+    return this.results.flatMap(result =>
+      result.issues
+        .filter(issue =>
+          (this.activeSeverity === 'Total' || issue.severity === this.activeSeverity) &&
+          (!this.activeType || issue.type === this.activeType)
+        )
+        .map(issue => ({ ...issue, filePath: result.filePath, changeType: result.changeType }))
+    );
+  }
 
-
+  getFilteredResults(): CodeReviewResult[] {
+    if (!this.activeSeverity || this.activeSeverity === 'Total') return this.results;
+    return this.results
+      .map(result => ({ ...result, issues: result.issues.filter(i => i.severity === this.activeSeverity) }))
+      .filter(result => result.issues.length > 0);
+  }
 
   reset(): void {
     this.activeSeverity = null;
     this.activeType = null;
-  }
-
-  // Final filtered issues list
-getFilteredIssues(): any[] {
-  return this.results.flatMap(result =>
-    result.issues
-      .filter(issue =>
-        (this.activeSeverity === 'Total' || issue.severity === this.activeSeverity) &&
-        (!this.activeType || issue.type === this.activeType)
-      )
-      .map(issue => ({
-        ...issue,
-        filePath: result.filePath,
-        changeType: result.changeType
-      }))
-  );
-}
-
-
-  // Check if there are any filtered results
-  getFilteredResults(): CodeReviewResult[] {
-    if (!this.activeSeverity || this.activeSeverity === 'Total') return this.results;
-
-    return this.results
-      .map(result => ({
-        ...result,
-        issues: result.issues.filter(i => i.severity === this.activeSeverity),
-      }))
-      .filter(result => result.issues.length > 0);
   }
 }

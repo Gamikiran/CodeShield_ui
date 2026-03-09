@@ -1,37 +1,115 @@
-<div class="selector-container">
-  <div class="header">
-    <button class="back-button" (click)="backToBranches()">
-      ← Back to Branches
-    </button>
-    <h2>Select a Merge Request</h2>
-  </div>
+<div class="page-shell">
 
-  <div *ngIf="loading" class="loading-container">
-    <app-loading-spinner></app-loading-spinner>
-  </div>
-
-  <div *ngIf="error" class="error-message">
-    {{ error }}
-  </div>
-
-  <div *ngIf="!loading && !error">
-    <div *ngIf="branchName" class="branch-filter">
-      Showing merge requests for branch: <strong>{{ branchName }}</strong>
+  <!-- Topbar -->
+  <div class="topbar">
+    <div class="topbar-inner">
+      <div class="brand"><span>⚡</span><span class="brand-name">GitReview</span></div>
+      <div class="nav-steps">
+        <div class="nav-step done">
+          <span class="ns-dot done">✓</span>
+          <span class="ns-label">Project</span>
+          <span class="ns-value" *ngIf="selectedProject">{{ selectedProject.name }}</span>
+        </div>
+        <span class="ns-sep">›</span>
+        <div class="nav-step done">
+          <span class="ns-dot done">✓</span>
+          <span class="ns-label">Branch</span>
+          <span class="ns-value" *ngIf="branchName">{{ branchName }}</span>
+        </div>
+        <span class="ns-sep">›</span>
+        <div class="nav-step active">
+          <span class="ns-dot active">3</span>
+          <span class="ns-label">Merge Request</span>
+        </div>
+        <span class="ns-sep">›</span>
+        <div class="nav-step">
+          <span class="ns-dot">4</span>
+          <span class="ns-label">Review</span>
+        </div>
+      </div>
     </div>
+  </div>
 
-    <div class="merge-request-list">
-      <div *ngFor="let mr of mergeRequests"
-           class="merge-request-item"
-           (click)="selectMergeRequest(mr)">
-        <div class="mr-title">#{{ mr.iid }}: {{ mr.title }}</div>
-        <div class="mr-branches">{{ mr.source_branch }} → {{ mr.target_branch }}</div>
-        <div class="mr-author">Author: {{ mr.author?.name || 'Unknown' }}</div>
-        <div class="mr-date">Created: {{ mr.created_at | date: 'medium' }}</div>
+  <div class="page-content">
+
+    <!-- Context Banner -->
+    <div class="context-banner" *ngIf="selectedProject">
+      <div class="cb-left">
+        <div class="cb-avatar">{{ selectedProject.name?.charAt(0)?.toUpperCase() }}</div>
+        <div>
+          <div class="cb-eyebrow">Selected Project</div>
+          <div class="cb-name">{{ selectedProject.name }}</div>
+        </div>
+      </div>
+      <div class="cb-right">
+        <span class="cb-branch" *ngIf="branchName">⎇ {{ branchName }}</span>
+        <span class="cb-id"># {{ selectedProject.id }}</span>
       </div>
     </div>
 
-    <div *ngIf="mergeRequests.length === 0" class="no-merge-requests">
-      No merge requests found for this branch.
+    <!-- Back + Header -->
+    <div class="page-header">
+      <button class="btn-back" (click)="backToBranches()">← Back to Branches</button>
+      <h1 class="page-title">Merge Requests</h1>
+      <p class="page-sub" *ngIf="branchName">
+        Showing MRs for branch <span class="branch-chip">⎇ {{ branchName }}</span>
+      </p>
     </div>
+
+    <!-- Skeletons -->
+    <div *ngIf="loading" class="mr-list">
+      <div class="mr-card skeleton" *ngFor="let i of [1,2,3,4]">
+        <div class="sk-num"></div>
+        <div class="sk-body">
+          <div class="sk-line wide"></div>
+          <div class="sk-line mid"></div>
+          <div class="sk-line narrow"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Error -->
+    <div *ngIf="error && !loading" class="alert-card">
+      <span>⚠️</span>
+      <div><strong>Failed to load merge requests</strong><p>{{ error }}</p></div>
+      <button (click)="loadMergeRequests()">↺ Retry</button>
+    </div>
+
+    <!-- MR List -->
+    <div *ngIf="!loading && !error" class="mr-list">
+      <div
+        *ngFor="let mr of mergeRequests"
+        class="mr-card"
+        (click)="selectMergeRequest(mr)"
+      >
+        <div class="mr-num"># {{ mr.iid }}</div>
+
+        <div class="mr-body">
+          <div class="mr-title">{{ mr.title }}</div>
+
+          <div class="mr-branches">
+            <span class="branch-tag src">{{ mr.source_branch }}</span>
+            <span class="branch-arrow-icon">→</span>
+            <span class="branch-tag tgt">{{ mr.target_branch }}</span>
+          </div>
+
+          <div class="mr-meta">
+            <span class="meta-item">👤 {{ mr.author?.name || 'Unknown' }}</span>
+            <span class="meta-sep">·</span>
+            <span class="meta-item">🗓 {{ mr.created_at | date: 'MMM d, y' }}</span>
+          </div>
+        </div>
+
+        <div class="mr-cta">Open →</div>
+      </div>
+    </div>
+
+    <!-- Empty -->
+    <div *ngIf="!loading && !error && mergeRequests.length === 0" class="empty-card">
+      <span class="empty-ico">🔀</span>
+      <h3>No merge requests found</h3>
+      <p>No MRs exist for this branch</p>
+    </div>
+
   </div>
 </div>

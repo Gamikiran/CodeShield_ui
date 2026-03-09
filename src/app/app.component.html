@@ -1,57 +1,6 @@
 <div class="app-container">
   <!-- Step Progress Bar -->
-  <div class="nav-steps">
-
-    <div class="nav-step" [class.done]="currentStep > 1" [class.active]="currentStep === 1">
-      <span class="ns-dot" [class.done]="currentStep > 1" [class.active]="currentStep === 1">
-        <span *ngIf="currentStep <= 1">1</span>
-        <span *ngIf="currentStep > 1">✓</span>
-      </span>
-      <div class="ns-info">
-        <span class="ns-label">Select Project</span>
-        <!-- ✅ Show project name once selected -->
-        <span class="ns-value" *ngIf="selectedProject">{{ selectedProject.name }}</span>
-      </div>
-    </div>
-  
-    <div class="step-line" [class.filled]="currentStep > 1"></div>
-  
-    <div class="nav-step" [class.done]="currentStep > 2" [class.active]="currentStep === 2">
-      <span class="ns-dot" [class.done]="currentStep > 2" [class.active]="currentStep === 2">
-        <span *ngIf="currentStep <= 2">2</span>
-        <span *ngIf="currentStep > 2">✓</span>
-      </span>
-      <div class="ns-info">
-        <span class="ns-label">Select Branch</span>
-        <!-- ✅ Show branch name once selected -->
-        <span class="ns-value" *ngIf="selectedBranch">{{ selectedBranch.name }}</span>
-      </div>
-    </div>
-  
-    <div class="step-line" [class.filled]="currentStep > 2"></div>
-  
-    <div class="nav-step" [class.done]="currentStep > 3" [class.active]="currentStep === 3">
-      <span class="ns-dot" [class.done]="currentStep > 3" [class.active]="currentStep === 3">
-        <span *ngIf="currentStep <= 3">3</span>
-        <span *ngIf="currentStep > 3">✓</span>
-      </span>
-      <div class="ns-info">
-        <span class="ns-label">Select Merge Request</span>
-        <span class="ns-value" *ngIf="selectedMR">#{{ selectedMR.iid }}</span>
-      </div>
-    </div>
-  
-    <div class="step-line" [class.filled]="currentStep > 3"></div>
-  
-    <div class="nav-step" [class.active]="currentStep === 4">
-      <span class="ns-dot" [class.active]="currentStep === 4">4</span>
-      <div class="ns-info">
-        <span class="ns-label">Review Results</span>
-      </div>
-    </div>
-  
-  </div>
-
+ 
   <!-- Step Content -->
   <div class="content-container">
     <!-- Loading overlay with animation -->
@@ -68,38 +17,51 @@
 
     <!-- Step content cards with fade transitions -->
     <div class="content card-container fade-in">
-      
-      <!-- Step 1: Select Project -->
+
+      <!-- Step 1 -->
       <app-project-selector 
         *ngIf="currentStep === 1"
         (projectSelected)="onProjectSelected($event)">
       </app-project-selector>
-
-      <!-- Step 2: Select Branch -->
+    
+      <!-- Step 2 -->
       <app-branch-selection
         *ngIf="currentStep === 2"
         [projectId]="selectedProject?.id"
         (branchSelected)="onBranchSelected($event)"
         (goBack)="backToProjects()"
       ></app-branch-selection>
-
-      <!-- Step 3: Select Merge Request -->
+    
+      <!-- Step 3 -->
       <app-merge-request-selector
-  *ngIf="currentStep === 3"
-  [projectId]="selectedProject?.id"
-  [branchName]="selectedBranch?.name"
-  [selectedProject]="selectedProject"
-  (mergeRequestSelected)="onMergeRequestSelected($event)"
-  (goBack)="currentStep = 2"
-></app-merge-request-selector>
-
-      <!-- Step 4: Review Results -->
-      <app-review-results 
-        *ngIf="currentStep === 4"
-        [results]="reviewResults"
-        [mergeRequest]="selectedMergeRequest"
-        [branch]="selectedBranch?.name">
-      </app-review-results>
+        *ngIf="currentStep === 3"
+        [projectId]="selectedProject?.id"
+        [branchName]="selectedBranch?.name"
+        [selectedProject]="selectedProject"
+        (mergeRequestSelected)="onMergeRequestSelected($event)"
+        (goBack)="currentStep = 2"
+      ></app-merge-request-selector>
+    
+      <!-- Step 4 -->
+      <div *ngIf="currentStep === 4">
+        <app-review-results 
+        [projectId]="selectedProject?.id"
+        [branchName]="selectedBranch?.name"
+        [selectedProject]="selectedProject"
+          [results]="reviewResults"
+          [mergeRequest]="selectedMergeRequest"
+          [branch]="selectedBranch?.name"
+          (goBack)="currentStep = 3">
+          
+        </app-review-results>
+        <app-token-setup></app-token-setup>
+        <app-ai-review-results
+          *ngIf="selectedMergeRequest"
+          [projectId]="selectedProject?.id"
+          [mergeRequest]="selectedMergeRequest"
+        ></app-ai-review-results>
+      </div>
+    
     </div>
   </div>
 </div>

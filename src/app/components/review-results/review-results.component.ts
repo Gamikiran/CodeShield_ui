@@ -1,7 +1,7 @@
-import { Component, Input, SimpleChanges } from '@angular/core';
+import { Component, EventEmitter, Input, Output, SimpleChanges } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { trigger, transition, style, animate } from '@angular/animations';
-import { CodeReviewResult } from '../../models/code-review.models';
+import { CodeReviewResult, GitLabProject } from '../../models/code-review.models';
 
 @Component({
   selector: 'app-review-results',
@@ -22,7 +22,10 @@ export class ReviewResultsComponent {
   @Input() results: CodeReviewResult[] = [];
   @Input() mergeRequest?: any;
   @Input() branch?: string;
-
+  @Output() goBack = new EventEmitter<void>();
+  @Input() projectId?: number;
+  @Input() branchName?: string;
+  @Input() selectedProject?: GitLabProject | null;
   filteredIssues: any[] = [];
   activeSeverity: string | null = null;
   activeType: string | null = null;
@@ -134,5 +137,8 @@ export class ReviewResultsComponent {
   reset(): void {
     this.activeSeverity = null;
     this.activeType = null;
+  }
+  backToBranches(): void {
+    this.goBack.emit();
   }
 }

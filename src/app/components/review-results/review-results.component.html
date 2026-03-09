@@ -32,7 +32,13 @@
   </div>
 
   <div class="page-content">
-
+    <div class="page-header">
+      <button class="btn-back" (click)="backToBranches()">← Back to MR</button>
+      <h1 class="page-title">Merge Requests</h1>
+      <p class="page-sub" *ngIf="branchName">
+        Showing MRs for branch <span class="branch-chip">⎇ {{ branchName }}</span>
+      </p>
+    </div>
     <!-- MR Info Banner -->
     <div class="mr-banner" *ngIf="mergeRequest">
       <div class="mrb-left">

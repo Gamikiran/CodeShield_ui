@@ -8,6 +8,8 @@ import { ReviewResultsComponent } from "./components/review-results/review-resul
 import { CommonModule, JsonPipe } from '@angular/common';
 import { BranchSelectionComponent } from './components/branch-selection/branch-selection.component';
 import { ContentSkeletonComponent } from "./loaders/content-skeleton/content-skeleton.component";
+import { AiReviewResultsComponent } from "./ai-review-results/ai-review-results.component";
+import { TokenSetupComponent } from "./token-setup/token-setup.component";
 
 
 @Component({
@@ -15,6 +17,7 @@ import { ContentSkeletonComponent } from "./loaders/content-skeleton/content-ske
   templateUrl: './app.component.html',
   styleUrls: ['./app.component.scss'],
   standalone: true,
+  host: { ngSkipHydration: 'true' },
   imports: [
     ProjectSelectorComponent,
     MergeRequestSelectorComponent,
@@ -25,6 +28,8 @@ import { ContentSkeletonComponent } from "./loaders/content-skeleton/content-ske
     JsonPipe,
     ContentSkeletonComponent,
     ContentSkeletonComponent,
+    AiReviewResultsComponent,
+    TokenSetupComponent
 ]
   //imports: [LoadingSpinnerComponent, ProjectSelectorComponent, MergeRequestSelectorComponent, ReviewResultsComponent]
 })
@@ -37,6 +42,7 @@ export class AppComponent {
   reviewResults: CodeReviewResult[] = [];
   loading = false;
   error: string | null = null;
+projectId: any;
 
   constructor(private codeReviewService: CodeReviewService) {}
 

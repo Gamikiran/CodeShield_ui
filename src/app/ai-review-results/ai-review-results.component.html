@@ -1,0 +1,215 @@
+<div class="air-shell">
+
+    <!-- ═══════════════════════════════════════════
+         AI REVIEW TRIGGER BUTTON (shown inside MR selector or review page)
+         ═══════════════════════════════════════════ -->
+    <div class="review-trigger-bar" *ngIf="!reviewResponse && !loading">
+      <div class="trigger-left">
+        <div class="trigger-icon">🤖</div>
+        <div>
+          <div class="trigger-title">AI Code Review</div>
+          <div class="trigger-sub">
+            Analyze MR
+            <span class="mr-chip" *ngIf="mergeRequest">#{{ mergeRequest.iid }}</span>
+            with Claude AI — backend, SQL, TypeScript suggestions
+          </div>
+        </div>
+      </div>
+      <button class="btn-review-ai" (click)="startReview()" [disabled]="!projectId || !mergeRequest">
+        <span class="btn-sparkle">✨</span>
+        Check with AI
+      </button>
+    </div>
+  
+    <!-- ═══════════════════════════════════════════
+         LOADING STATE
+         ═══════════════════════════════════════════ -->
+    <div class="loading-panel" *ngIf="loading">
+      <div class="lp-inner">
+        <div class="lp-spinner">
+          <div class="spinner-ring"></div>
+          <div class="lp-logo">🤖</div>
+        </div>
+        <div class="lp-title">Analyzing your code...</div>
+        <div class="lp-steps">
+          <div class="lp-step" [class.done]="loadStep > 0" [class.active]="loadStep === 0">
+            <span>📥</span> Fetching GitLab diffs
+          </div>
+          <div class="lp-step" [class.done]="loadStep > 1" [class.active]="loadStep === 1">
+            <span>🔍</span> Classifying file types
+          </div>
+          <div class="lp-step" [class.done]="loadStep > 2" [class.active]="loadStep === 2">
+            <span>🔒</span> Masking sensitive table names
+          </div>
+          <div class="lp-step" [class.done]="loadStep > 3" [class.active]="loadStep === 3">
+            <span>🧠</span> Sending to Claude AI
+          </div>
+          <div class="lp-step" [class.done]="loadStep > 4" [class.active]="loadStep === 4">
+            <span>✅</span> Processing suggestions
+          </div>
+        </div>
+      </div>
+    </div>
+  
+    <!-- ═══════════════════════════════════════════
+         ERROR STATE
+         ═══════════════════════════════════════════ -->
+    <div class="error-panel" *ngIf="error && !loading">
+      <span class="ep-icon">⚠️</span>
+      <div>
+        <div class="ep-title">Review Failed</div>
+        <div class="ep-msg">{{ error }}</div>
+      </div>
+      <button class="btn-retry" (click)="startReview()">↺ Retry</button>
+    </div>
+  
+    <!-- ═══════════════════════════════════════════
+         RESULTS
+         ═══════════════════════════════════════════ -->
+    <div class="results-shell" *ngIf="reviewResponse && !loading">
+  
+      <!-- Results Header -->
+      <div class="results-header">
+        <div class="rh-left">
+          <span class="rh-icon">🤖</span>
+          <div>
+            <div class="rh-title">AI Review Complete</div>
+            <div class="rh-sub">
+              MR <strong>#{{ reviewResponse.mergeRequestIid }}</strong> ·
+              {{ reviewResponse.files.length }} files analyzed ·
+              {{ reviewedAt }}
+            </div>
+          </div>
+        </div>
+        <div class="rh-actions">
+          <div class="score-summary">
+            <div class="ss-item critical">
+              <span>🚨</span>
+              <span class="ss-num">{{ getTotalBySeverity('Critical') }}</span>
+              <span class="ss-lbl">Critical</span>
+            </div>
+            <div class="ss-item high">
+              <span>❗</span>
+              <span class="ss-num">{{ getTotalBySeverity('High') }}</span>
+              <span class="ss-lbl">High</span>
+            </div>
+            <div class="ss-item medium">
+              <span>⚠️</span>
+              <span class="ss-num">{{ getTotalBySeverity('Medium') }}</span>
+              <span class="ss-lbl">Medium</span>
+            </div>
+            <div class="ss-item low">
+              <span>ℹ️</span>
+              <span class="ss-num">{{ getTotalBySeverity('Low') }}</span>
+              <span class="ss-lbl">Low</span>
+            </div>
+          </div>
+          <button class="btn-rerun" (click)="resetReview()">🔄 New Review</button>
+        </div>
+      </div>
+  
+      <!-- File Cards -->
+      <div class="file-reviews">
+        <div
+          *ngFor="let file of reviewResponse.files; let i = index"
+          class="file-card"
+          [class.expanded]="file.isExpanded"
+        >
+          <!-- File Card Header -->
+          <div class="fc-header" (click)="toggleFile(file)">
+            <div class="fc-left">
+              <span class="fc-type-icon">{{ getFileIcon(file.fileType) }}</span>
+              <div class="fc-info">
+                <div class="fc-path">{{ getFileName(file.filePath) }}</div>
+                <div class="fc-fullpath">{{ file.filePath }}</div>
+              </div>
+              <div class="fc-badges">
+                <span class="badge-new" *ngIf="file.isNew">+ New</span>
+                <span class="badge-del" *ngIf="file.isDeleted">− Deleted</span>
+                <span class="badge-ren" *ngIf="file.isRenamed">↔ Renamed</span>
+                <span class="badge-type">{{ file.fileType }}</span>
+              </div>
+            </div>
+            <div class="fc-right">
+              <div class="fc-score" *ngIf="file.parsedReview" [ngClass]="file.parsedReview.overallScore | scoreClass">
+                {{ getScoreEmoji(file.parsedReview.overallScore) }} {{ file.parsedReview.overallScore }}
+              </div>
+              <div class="fc-issue-count" *ngIf="file.parsedReview?.issues?.length">
+                {{ file.parsedReview!.issues.length }} issues
+              </div>
+              <span class="fc-toggle">{{ file.isExpanded ? '▲' : '▼' }}</span>
+            </div>
+          </div>
+  
+          <!-- Expanded Content -->
+          <div class="fc-body" *ngIf="file.isExpanded">
+  
+            <!-- Summary -->
+            <div class="review-summary" *ngIf="file.parsedReview?.summary">
+              <span class="rs-icon">📋</span>
+              <div>
+                <div class="rs-label">Summary</div>
+                <div class="rs-text">{{ file.parsedReview!.summary }}</div>
+              </div>
+            </div>
+  
+            <!-- Issues List -->
+            <div class="issues-section" *ngIf="file.parsedReview?.issues?.length">
+              <div class="is-title">Issues Found</div>
+              <div class="issue-list">
+                <div
+                  *ngFor="let issue of file.parsedReview!.issues"
+                  class="issue-item"
+                  [ngClass]="issue.severity.toLowerCase()"
+                >
+                  <div class="ii-header">
+                    <span class="ii-sev" [ngClass]="issue.severity.toLowerCase()">
+                      {{ getSeverityIcon(issue.severity) }} {{ issue.severity }}
+                    </span>
+                    <span class="ii-type">{{ issue.type }}</span>
+                    <span class="ii-line" *ngIf="issue.lineNumber || issue.line">
+                      Line {{ issue.lineNumber || issue.line }}
+                    </span>
+                  </div>
+                  <div class="ii-message">{{ issue.message }}</div>
+                  <div class="ii-suggestion">
+                    <span>💡</span>
+                    <div>
+                      <strong>Suggestion:</strong>
+                      <p>{{ issue.suggestion }}</p>
+                    </div>
+                  </div>
+                  <div class="ii-code" *ngIf="issue.codeExample">
+                    <div class="code-label">Suggested Code:</div>
+                    <pre><code>{{ issue.codeExample }}</code></pre>
+                  </div>
+                </div>
+              </div>
+            </div>
+  
+            <!-- Optimized Code -->
+            <div class="optimized-section" *ngIf="file.parsedReview?.optimizedCode">
+              <div class="os-header">
+                <span>⚡</span>
+                <div class="os-title">Optimized Version</div>
+                <button class="btn-copy" (click)="copyCode(file.parsedReview!.optimizedCode!)">
+                  📋 Copy
+                </button>
+              </div>
+              <pre class="os-code"><code>{{ file.parsedReview!.optimizedCode }}</code></pre>
+            </div>
+  
+            <!-- Raw diff toggle -->
+            <div class="diff-section">
+              <button class="btn-diff-toggle" (click)="file['showDiff'] = !file['showDiff']">
+                {{ file['showDiff'] ? '▲ Hide' : '▼ Show' }} original diff
+              </button>
+              <pre class="diff-code" *ngIf="file['showDiff']"><code [innerHTML]="formatDiff(file.diff)"></code></pre>
+            </div>
+  
+          </div>
+        </div>
+      </div>
+  
+    </div>
+  </div>

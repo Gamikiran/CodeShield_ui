@@ -68,48 +68,149 @@ export class AiReviewService {
 
   parseAISuggestion(rawText: string): ParsedAIReview | null {
     try {
-      const cleaned = rawText
+      let cleaned = rawText
         .replace(/```json\s*/gi, '')
         .replace(/```\s*/gi, '')
         .trim();
   
+      const jsonStart = cleaned.indexOf('{');
+      const jsonEnd = cleaned.lastIndexOf('}');
+      if (jsonStart >= 0 && jsonEnd > jsonStart) {
+        cleaned = cleaned.substring(jsonStart, jsonEnd + 1);
+      }
+  
       const parsed = JSON.parse(cleaned);
   
-      // ✅ If summary itself is a JSON string, extract it
+      parsed.issues = Array.isArray(parsed.issues) ? parsed.issues : [];
+      parsed.impactedAreas = Array.isArray(parsed.impactedAreas) ? parsed.impactedAreas : [];
+  
+      // ✅ Auto-assign severity based on issue type
+      parsed.issues = parsed.issues.map((issue: any) => ({
+        ...issue,
+        severity: this.assignSeverity(issue),
+        lineNumber: issue.lineNumber?.toString() ?? issue.line?.toString() ?? ''
+      }));
+  
+      parsed.impactedAreas = parsed.impactedAreas.map((impact: any) => ({
+        ...impact,
+        severity: this.assignImpactSeverity(impact)
+      }));
+  
+      // Clean summary
       if (typeof parsed.summary === 'string' && parsed.summary.trim().startsWith('{')) {
         try {
           const inner = JSON.parse(parsed.summary);
           parsed.summary = inner.summary ?? parsed.summary;
-        } catch { /* keep as is */ }
-      }
-  
-      // ✅ Filter issues — only keep relevant ones with real method names
-      if (parsed.issues?.length) {
-        parsed.issues = parsed.issues.filter((issue: any) =>
-          issue.message &&
-          issue.message.length > 10 &&
-          issue.severity !== 'Info'
-        );
-      }
-  
-      // ✅ Filter impacted areas — only keep ones with specific method/area names
-      if (parsed.impactedAreas?.length) {
-        parsed.impactedAreas = parsed.impactedAreas.filter((impact: any) =>
-          impact.area &&
-          impact.area !== 'Unknown' &&
-          impact.area !== 'N/A' &&
-          impact.description?.length > 10
-        );
+        } catch { /* keep */ }
       }
   
       return parsed;
-    } catch {
+  
+    } catch (e) {
+      console.error('parseAISuggestion failed:', e, '\nRaw:', rawText);
+      const summaryMatch = rawText.match(/"summary"\s*:\s*"([^"]{10,})"/);
       return {
-        summary: rawText,
+        summary: summaryMatch ? summaryMatch[1] : 'Could not parse AI response',
         issues: [],
+        impactedAreas: [],
         overallScore: 'Needs Improvement'
       };
     }
+  }
+  
+  // ✅ Auto-assign severity by issue type keywords
+  private assignSeverity(issue: any): 'Critical' | 'High' | 'Medium' | 'Low' {
+    const type    = (issue.type    ?? '').toLowerCase();
+    const message = (issue.message ?? '').toLowerCase();
+    const suggestion = (issue.suggestion ?? '').toLowerCase();
+    const combined = `${type} ${message} ${suggestion}`;
+  
+    // ── CRITICAL — app/build stops working
+    const criticalKeywords = [
+      'syntax error', 'trailing comma', 'compilation error', 'compile error',
+      'breaking change', 'will not compile', 'build error', 'sql exception',
+      'syntaxerror', 'missing bracket', 'missing parenthesis', 'invalid syntax',
+      'method signature', 'parameter removed', 'argument mismatch',
+      'cannot be null', 'object reference', 'nullreferenceexception',
+      'dividebyzeroexception', 'stackoverflow', 'infinite loop'
+    ];
+    if (criticalKeywords.some(k => combined.includes(k))) return 'Critical';
+  
+    // ── CRITICAL by type
+    const criticalTypes = ['syntaxerror', 'compilationerror', 'brokenreference', 'parametermismatch'];
+    if (criticalTypes.some(t => type.includes(t))) return 'Critical';
+  
+    // ── HIGH — wrong data or runtime failure
+    const highKeywords = [
+      'hardcoded', 'wrong alias', 'null reference', 'data corruption',
+      'wrong data', 'incorrect data', 'logic error', 'wrong condition',
+      'missing await', 'deadlock', 'race condition', 'sql injection',
+      'xss', 'security', 'authentication', 'authorization', 'wrong join',
+      'alias mismatch', 'column not found', 'wrong result', 'data loss'
+    ];
+    if (highKeywords.some(k => combined.includes(k))) return 'High';
+  
+    const highTypes = [
+      'logicerror', 'wrongdata', 'hardcodedvalue', 'aliasmismatch',
+      'nullsafety', 'security', 'dataissue', 'namingmismatch'
+    ];
+    if (highTypes.some(t => type.includes(t))) return 'High';
+  
+    // ── MEDIUM — quality/performance
+    const mediumKeywords = [
+      'performance', 'n+1', 'missing index', 'slow query', 'inefficient',
+      'long method', 'magic number', 'duplicate code', 'refactor',
+      'missing error handling', 'should be async'
+    ];
+    if (mediumKeywords.some(k => combined.includes(k))) return 'Medium';
+  
+    const mediumTypes = ['performance', 'codequality', 'bestpractice'];
+    if (mediumTypes.some(t => type.includes(t))) return 'Medium';
+  
+    // ── LOW — style/naming
+    const lowKeywords = [
+      'naming', 'whitespace', 'comment', 'documentation', 'unused import',
+      'code style', 'convention', 'readability', 'minor'
+    ];
+    if (lowKeywords.some(k => combined.includes(k))) return 'Low';
+  
+    // ── Default: use AI-provided severity if valid, else Medium
+    return this.normalizeSeverity(issue.severity);
+  }
+  
+  // ✅ Auto-assign impact severity
+  private assignImpactSeverity(impact: any): 'Critical' | 'High' | 'Medium' | 'Low' {
+    const type        = (impact.impactType  ?? '').toLowerCase();
+    const description = (impact.description ?? '').toLowerCase();
+    const combined    = `${type} ${description}`;
+  
+    const criticalImpact = [
+      'breakingchange', 'compilationerror', 'syntaxerror', 'dataloss',
+      'will not compile', 'build fails', 'syntax error', 'breaking change'
+    ];
+    if (criticalImpact.some(k => combined.includes(k))) return 'Critical';
+  
+    const highImpact = [
+      'potentialbug', 'wrongdata', 'dataissue', 'wrong data',
+      'incorrect result', 'runtime error', 'null reference'
+    ];
+    if (highImpact.some(k => combined.includes(k))) return 'High';
+  
+    const mediumImpact = [
+      'performancedegradation', 'memoryleak', 'wrongbehavior', 'testfailure'
+    ];
+    if (mediumImpact.some(k => combined.includes(k))) return 'Medium';
+  
+    return this.normalizeSeverity(impact.severity);
+  }
+  
+  private normalizeSeverity(severity: string): 'Critical' | 'High' | 'Medium' | 'Low' {
+    if (!severity) return 'Medium';
+    const s = severity.trim().toLowerCase();
+    if (s === 'critical') return 'Critical';
+    if (s === 'high')     return 'High';
+    if (s === 'low')      return 'Low';
+    return 'Medium';
   }
   getDiffs(projectId: number, mrIid: number): Observable<any> {
     const gitlabToken = this.auth.getGitlabToken();
@@ -272,15 +373,34 @@ export class AiReviewService {
   private getInstructions(fileType: string, mode: 'diff' | 'full'): string {
 
     const outputRules = `
-  STRICT RULES:
-  - Summary: max 3 sentences. What changed, what is broken, what is at risk.
-  - Issues: report EVERY real problem found — syntax, logic, security, performance, naming, structure.
-  - Do NOT skip issues because they seem minor — report everything found in the code.
-  - Each issue must mention the SPECIFIC method/variable/column/line involved.
-  - impactedAreas: every method/function/procedure that calls or depends on changed code.
-  - Use EXACT names from the file — no generic entries.
-  - No markdown. No backticks. Pure JSON only.
-  `;
+STRICT RULES:
+- Summary: max 8 sentences. What changed, what is broken, what is at risk.
+- Issues: report EVERY real problem found — syntax, logic, security, performance, naming, structure.
+- Do NOT skip issues because they seem minor — report everything found in the code.
+- Each issue must mention the SPECIFIC method/variable/column/line involved.
+- impactedAreas: every method/function/procedure that calls or depends on changed code.
+- Use EXACT names from the file — no generic entries.
+- No markdown. No backticks. Pure JSON only.
+
+SEVERITY RULES — follow strictly:
+- Critical : Will stop the project from compiling or running.
+             Examples: syntax error, trailing comma in SQL, missing bracket,
+             removed parameter still called by other methods, compilation error,
+             method signature breaking change, query that will throw SQL exception.
+
+- High     : Will cause wrong behavior or data corruption at runtime but won't stop build.
+             Examples: hardcoded value replacing parameter, wrong alias in WHERE clause,
+             null reference risk, wrong JOIN condition, logic error returning wrong data,
+             async method called without await.
+
+- Medium   : Reduces quality, maintainability or performance but app still works.
+             Examples: N+1 query, missing index hint, long method, magic number,
+             missing null check on non-critical path, performance degradation.
+
+- Low      : Code style, naming convention, minor improvements.
+             Examples: variable name too short, missing XML doc, unused import,
+             trailing whitespace, inconsistent casing.
+`;
   
     const fullModeNote = mode === 'full'
       ? `You have the FULL file content.
@@ -302,7 +422,7 @@ export class AiReviewService {
   ` : `
   Impact Analysis:
   Based on the diff:
-  - Which callers are likely affected by this change
+  - Which callers are likely affected by this change get the name
   - What could break at runtime or compile time
   - Any silent failures that could occur
   `;

@@ -56,6 +56,13 @@
       </p>
     </div>
 
+    <!-- Filter Tabs -->
+    <div class="filter-tabs">
+      <button *ngFor="let f of filters" class="filter-tab" [class.active]="activeFilter === f.value" (click)="setFilter(f.value)">
+        {{ f.label }} ({{ f.count }})
+      </button>
+    </div>
+
     <!-- Skeletons -->
     <div *ngIf="loading" class="mr-list">
       <div class="mr-card skeleton" *ngFor="let i of [1,2,3,4]">
@@ -97,6 +104,8 @@
             <span class="meta-item">👤 {{ mr.author?.name || 'Unknown' }}</span>
             <span class="meta-sep">·</span>
             <span class="meta-item">🗓 {{ mr.created_at | date: 'MMM d, y' }}</span>
+            <span class="meta-sep">·</span>
+            <span class="meta-item state-badge" [ngClass]="'state-' + mr.state">{{ mr.state }}</span>
           </div>
         </div>
 
@@ -108,7 +117,7 @@
     <div *ngIf="!loading && !error && mergeRequests.length === 0" class="empty-card">
       <span class="empty-ico">🔀</span>
       <h3>No merge requests found</h3>
-      <p>No MRs exist for this branch</p>
+      <p>No MRs found for the <strong>{{ activeFilter }}</strong> filter</p>
     </div>
 
   </div>

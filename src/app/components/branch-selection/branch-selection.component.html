@@ -56,15 +56,20 @@
         </div>
         <!-- Filter Pills -->
         <div class="filter-group">
-          <button
-            *ngFor="let status of statuses"
-            class="filter-pill"
-            [class.active]="selectedStatus === status"
-            (click)="onStatusChange(status)"
-          >
-            <span class="pill-dot" [ngClass]="status.toLowerCase()"></span>
-            {{ status }}
-            <span class="pill-count">{{ status === 'All' ? branches.length : getCountByStatus(status) }}</span>          </button>
+        
+          <!-- All Count -->
+          <div class="filter-pill active">
+            <span class="pill-dot all"></span>
+            All
+            <span class="pill-count">{{ branches.length }}</span>
+          </div>
+        
+          <!-- Search Bar -->
+          <div class="branch-search">
+            <span class="search-icon">🔍</span>
+            <input type="text" placeholder="Search branch..." [(ngModel)]="searchText" (input)="filterBranches()" />
+          </div>
+        
         </div>
       </div>
     </div>
@@ -102,9 +107,9 @@
             👤 {{ branch.commit.author_name }}
           </div>
         </div>
-        <div class="status-badge" [ngClass]="branch.status.toLowerCase()">
-          <span class="sb-dot"></span>
-          {{ branch.status }}
+        <div class="status-badge" [ngClass]="branch.status?.toLowerCase()">
+  <span class="sb-dot"></span>
+  {{ branch.status ?? '—' }}
         </div>
         <div class="bc-arrow">→</div>
       </div>

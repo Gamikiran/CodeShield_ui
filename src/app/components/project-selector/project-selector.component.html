@@ -11,12 +11,24 @@
       <p class="hero-sub">Choose a repository to begin your code review</p>
     </div>
 
+    <!-- <div class="project-search">
+      <input type="text" placeholder="Search project..." [(ngModel)]="searchText" (input)="filterProjects()"
+        class="search-input" />
+    </div> -->
     <!-- Stats Bar -->
     <div class="stats-bar" *ngIf="!loading && !error && projects?.length">
+    
       <div class="stat-item">
-        <span class="stat-num">{{ projects.length }}</span>
+        <span class="stat-num">{{ filteredProjects.length }}</span>
         <span class="stat-lbl">Projects Available</span>
       </div>
+    
+      <!-- Search -->
+      <div class="search-box">
+        <span class="search-icon">🔍</span>
+        <input type="text" placeholder="Search project..." [(ngModel)]="searchText" (input)="filterProjects()" />
+      </div>
+    
     </div>
 
     <!-- Loading Skeletons -->
@@ -44,7 +56,7 @@
     <!-- Projects Grid -->
     <div *ngIf="!loading && !error" class="project-grid">
       <div
-        *ngFor="let project of projects; trackBy: trackById"
+        *ngFor="let project of filteredProjects; trackBy: trackById"
         class="project-card"
         [class.is-selected]="selectedProject?.id === project.id"
         (click)="selectProject(project)"

@@ -195,6 +195,38 @@
   p { font-size: 14px; color: #64748b; margin: 0; }
 }
 
+
+.search-box {
+  margin-left: auto;
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.search-box input {
+  width: 320px;              
+  padding: 10px 14px 10px 38px;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+  background: #f8fafc;
+  font-size: 14px;         
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  transition: all 0.2s ease;
+}
+
+.search-box input:focus {
+  outline: none;
+  border-color: #6366f1;
+  background: #fff;
+  box-shadow: 0 0 0 3px rgba(99,102,241,0.12);
+}
+
+.search-icon {
+  position: absolute;
+  left: 12px;
+  font-size: 15px;   
+  color: #94a3b8;
+}
 @media (max-width: 640px) {
   .nav-steps { display: none; }
   .project-grid { grid-template-columns: 1fr; }

@@ -183,7 +183,37 @@
   h3 { font-size: 18px; font-weight: 700; color: #0f172a; margin: 0 0 8px; }
   p { font-size: 14px; color: #64748b; margin: 0; }
 }
+.branch-search {
+  position: relative;
+  margin-left: 12px;
+}
 
+.branch-search input {
+  width: 260px;
+  padding: 8px 12px 8px 34px;
+  border-radius: 10px;
+  border: 1px solid #e2e8f0;
+  background: #f8fafc;
+  font-size: 13px;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  transition: all 0.2s;
+}
+
+.branch-search input:focus {
+  outline: none;
+  border-color: #6366f1;
+  background: #fff;
+  box-shadow: 0 0 0 3px rgba(99,102,241,0.12);
+}
+
+.search-icon {
+  position: absolute;
+  left: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 13px;
+  color: #94a3b8;
+}
 @media (max-width: 640px) {
   .nav-steps { display: none; }
   .header-row { flex-direction: column; }

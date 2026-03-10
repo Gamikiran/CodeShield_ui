@@ -26,7 +26,7 @@ getProjects(): Observable<GitLabProject[]> {
   return this.http.get<BranchStatusViewModel[]>(`/api/projects/${projectId}/branches`);
 }
 
-  getMergeRequests(projectId: number, sourceBranch?: string): Observable<GitLabMergeRequest[]> {
+  getMergeRequests(projectId: number, sourceBranch?: string, stateParam?: string | undefined): Observable<GitLabMergeRequest[]> {
     const url = sourceBranch 
       ? `${this.apiUrl}/projects/${projectId}/merge-requests?sourceBranch=${sourceBranch}`
       : `${this.apiUrl}/projects/${projectId}/merge-requests`;

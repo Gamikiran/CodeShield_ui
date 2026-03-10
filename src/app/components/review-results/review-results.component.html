@@ -69,7 +69,7 @@
         (click)="selectSeverity('Critical')"
       >
         <div class="sc-icon">🚨</div>
-        <div class="sc-count" [@fadeIn]>{{ getIssueCount('Critical') }}</div>
+        <div class="sc-count" [@fadeIn]="true">{{ getIssueCount('Critical') }}</div>
         <div class="sc-label">Critical</div>
       </div>
       <div
@@ -78,7 +78,7 @@
         (click)="selectSeverity('High')"
       >
         <div class="sc-icon">❗</div>
-        <div class="sc-count" [@fadeIn]>{{ getIssueCount('High') }}</div>
+        <div class="sc-count" [@fadeIn]="true">{{ getIssueCount('High') }}</div>
         <div class="sc-label">High</div>
       </div>
       <div
@@ -87,7 +87,7 @@
         (click)="selectSeverity('Medium')"
       >
         <div class="sc-icon">⚠️</div>
-        <div class="sc-count" [@fadeIn]>{{ getIssueCount('Medium') }}</div>
+        <div class="sc-count" [@fadeIn]="true">{{ getIssueCount('Medium') }}</div>
         <div class="sc-label">Medium</div>
       </div>
       <div
@@ -96,7 +96,7 @@
         (click)="selectSeverity('Low')"
       >
         <div class="sc-icon">ℹ️</div>
-        <div class="sc-count" [@fadeIn]>{{ getIssueCount('Low') }}</div>
+        <div class="sc-count" [@fadeIn]="true">{{ getIssueCount('Low') }}</div>
         <div class="sc-label">Low</div>
       </div>
       <div
@@ -105,7 +105,7 @@
         (click)="selectSeverity('Total')"
       >
         <div class="sc-icon">📊</div>
-        <div class="sc-count" [@fadeIn]>{{ getTotalIssues() }}</div>
+        <div class="sc-count" [@fadeIn]="true">{{ getTotalIssues() }}</div>
         <div class="sc-label">Total</div>
       </div>
     </div>

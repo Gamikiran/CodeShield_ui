@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { GitLabBranch, GitLabProject } from '../../models/code-review.models';
 import { CodeReviewService } from '../../services/code-review.service';
 import { ContentSkeletonComponent } from '../../loaders/content-skeleton/content-skeleton.component';
+import { FormsModule } from '@angular/forms';
 
 interface GitLabBranchWithStatus extends GitLabBranch {
   status: 'Open' | 'Merged' | 'Closed';
@@ -11,7 +12,7 @@ interface GitLabBranchWithStatus extends GitLabBranch {
 @Component({
   selector: 'app-branch-selection',
   standalone: true,
-  imports: [CommonModule, ContentSkeletonComponent],
+  imports: [CommonModule, ContentSkeletonComponent,FormsModule],
   templateUrl: './branch-selection.component.html',
   styleUrl: './branch-selection.component.scss',
 })
@@ -21,10 +22,9 @@ export class BranchSelectionComponent implements OnChanges {
   @Input() selectedProject?: GitLabProject | null;
   branches: GitLabBranchWithStatus[] = [];
   filteredBranches: GitLabBranchWithStatus[] = [];
-  statuses = ['All', 'Open', 'Merged', 'Closed'];
-  selectedStatus = 'All';
   loading = false;
   error: string | null = null;
+  searchText: string = '';
 
   @Output() branchSelected = new EventEmitter<GitLabBranchWithStatus>();
   @Output() goBack = new EventEmitter<void>();
@@ -33,7 +33,7 @@ export class BranchSelectionComponent implements OnChanges {
 
   ngOnChanges(changes: SimpleChanges): void {
     if (changes['projectId'] && this.projectId) {
-      this.selectedStatus = 'All';
+      //this.selectedStatus = 'All';
       this.loadBranches();
     }
   }
@@ -52,7 +52,7 @@ export class BranchSelectionComponent implements OnChanges {
             status: branch.status,
             commit: { author_name: branch.author_name }
           }));
-          this.applyFilter();
+          this.filteredBranches = [...this.branches];
           this.loading = false;
         },
         error: err => {
@@ -66,19 +66,21 @@ export class BranchSelectionComponent implements OnChanges {
     }
   }
 
-  applyFilter(): void {
-    this.filteredBranches = this.selectedStatus === 'All'
-      ? this.branches
-      : this.branches.filter(b => b.status === this.selectedStatus);
+  filterBranches(): void {
+
+  if (!this.searchText) {
+    this.filteredBranches = [...this.branches];
+    return;
   }
+
+  const search = this.searchText.toLowerCase();
+
+  this.filteredBranches = this.branches.filter(b =>
+    b.name.toLowerCase().includes(search)
+  );
+}
 
   // ✅ Filter change reloads branches
-  onStatusChange(status: string): void {
-    if (this.selectedStatus === status) return;
-    this.selectedStatus = status;
-    this.loadBranches();
-  }
-
   selectBranch(branch: GitLabBranchWithStatus): void {
     this.branchSelected.emit(branch);
   }
@@ -86,7 +88,5 @@ export class BranchSelectionComponent implements OnChanges {
   backToProjects(): void {
     this.goBack.emit();
   }
-  getCountByStatus(status: string): number {
-    return this.branches.filter(b => b.status === status).length;
-  }
+
 }

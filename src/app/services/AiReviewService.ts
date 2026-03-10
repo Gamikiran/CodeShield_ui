@@ -108,11 +108,13 @@ export class AiReviewService {
     const apiKey = this.auth.getGeminiKey();
     if (!apiKey) throw new Error('Gemini API key not set.');
   
-    // ✅ Try models in order — each has separate free quota
+    // ✅ Exact model names from your available list
     const models = [
-      'gemini-1.5-flash',        // 1500 req/day free
-      'gemini-1.5-flash-8b',     // 1500 req/day free (smaller/faster)
-      'gemini-1.0-pro',          // separate quota
+      'gemini-2.5-flash',
+      'gemini-2.0-flash',
+      'gemini-2.0-flash-001',
+      'gemini-2.0-flash-lite',
+      'gemini-flash-latest',
     ];
   
     let lastError = '';
@@ -120,45 +122,70 @@ export class AiReviewService {
     for (const model of models) {
       try {
         const result = await this.callGeminiModel(model, prompt, apiKey);
+        console.log(`✅ Review completed using: ${model}`);
         return result;
       } catch (err: any) {
         lastError = err.message ?? '';
-        // If quota exceeded, try next model
-        if (lastError.includes('quota') || lastError.includes('RESOURCE_EXHAUSTED')) {
-          console.warn(`Model ${model} quota exceeded, trying next...`);
-          continue;
+        console.warn(`⚠️ ${model} failed: ${lastError}`);
+  
+        if (
+          lastError.includes('quota') ||
+          lastError.includes('RESOURCE_EXHAUSTED') ||
+          lastError.includes('not found') ||
+          lastError.includes('not supported') ||
+          lastError.includes('404')
+        ) {
+          continue; // try next model
         }
-        // Any other error — throw immediately
         throw err;
       }
     }
   
-    throw new Error(`All models quota exceeded. Try again in 1 minute. ${lastError}`);
+    throw new Error(`All Gemini models failed. Last: ${lastError}`);
   }
   
   private async callGeminiModel(model: string, prompt: string, apiKey: string): Promise<string> {
-    const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: prompt }] }],
-          generationConfig: {
-            maxOutputTokens: 2048,  // ✅ Reduced to save quota
-            temperature: 0.1
-          }
-        })
-      }
-    );
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+  
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: prompt }] }],
+        generationConfig: {
+          maxOutputTokens: 2048,
+          temperature: 0.1
+        }
+      })
+    });
   
     const data = await response.json();
   
     if (!response.ok) {
-      throw new Error(data?.error?.message ?? `${model} error`);
+      throw new Error(data?.error?.message ?? `${model} failed with ${response.status}`);
     }
   
-    const text = data.candidates?.[0]?.content?.parts?.[0]?.text ?? '';
+    if (!data.candidates?.length) {
+      throw new Error(`${model} returned no candidates`);
+    }
+  
+    const text = data.candidates[0]?.content?.parts?.[0]?.text ?? '';
     return text.replace(/```json\s*/gi, '').replace(/```\s*/gi, '').trim();
+  }
+  async listAvailableModels(): Promise<string[]> {
+    const apiKey = this.auth.getGeminiKey();
+    if (!apiKey) return [];
+  
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`
+    );
+    const data = await response.json();
+  
+    const models = data.models
+      ?.filter((m: any) => m.supportedGenerationMethods?.includes('generateContent'))
+      ?.map((m: any) => m.name.replace('models/', ''));
+  
+    console.log('✅ Your available Gemini models:', models);
+    return models ?? [];
   }
 }

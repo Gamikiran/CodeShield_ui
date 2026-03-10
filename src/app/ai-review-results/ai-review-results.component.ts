@@ -53,7 +53,14 @@ export class AiReviewResultsComponent implements OnDestroy {
   ngOnDestroy(): void {
     clearInterval(this.stepInterval);
   }
-
+  ngOnInit(): void {
+    this.aiReviewService.listAvailableModels().then(models => {
+      // Use the first available model
+      if (models.length > 0) {
+        console.log('Using model:', models[0]);
+      }
+    });
+  }
   // startReview(): void {
   //   if (!this.projectId || !this.mergeRequest?.iid) return;
 

@@ -13,10 +13,19 @@ export interface AIIssue {
   suggestion: string;
   codeExample?: string;
 }
-
+export interface ImpactedArea {
+  area: string;
+  impactType: 'BreakingChange' | 'PotentialBug' | 'DataIssue' | 'WrongData' |
+              'PerformanceDegradation' | 'DataLoss' | 'TestFailure' |
+              'UIBroken' | 'MemoryLeak' | 'WrongBehavior';
+  severity: 'Critical' | 'High' | 'Medium' | 'Low';
+  description: string;
+  recommendation: string;
+}
 export interface ParsedAIReview {
   summary: string;
   issues: AIIssue[];
+  impactedAreas?: ImpactedArea[];   // ✅ NEW
   optimizedCode?: string;
   overallScore: 'Good' | 'Needs Improvement' | 'Critical';
 }
@@ -25,13 +34,16 @@ export interface FileReviewResult {
   filePath: string;
   fileType: string;
   diff: string;
+  fullContent?: string;        // ✅ add
   aiSuggestion: string;
-  parsedReview?: ParsedAIReview | null;  // ✅ add null
+  parsedReview?: ParsedAIReview | null;
   isDeleted: boolean;
   isNew: boolean;
   isRenamed: boolean;
   isExpanded?: boolean;
-  showDiff?: boolean;                    // ✅ add this
+  showDiff?: boolean;
+  reviewMode?: 'diff' | 'full'; // ✅ add
+  tablesMasked?:any;
 }
 
 export interface ReviewResponse {
@@ -56,14 +68,42 @@ export class AiReviewService {
 
   parseAISuggestion(rawText: string): ParsedAIReview | null {
     try {
-      // Strip markdown code fences if present
       const cleaned = rawText
         .replace(/```json\s*/gi, '')
         .replace(/```\s*/gi, '')
         .trim();
-      return JSON.parse(cleaned);
+  
+      const parsed = JSON.parse(cleaned);
+  
+      // ✅ If summary itself is a JSON string, extract it
+      if (typeof parsed.summary === 'string' && parsed.summary.trim().startsWith('{')) {
+        try {
+          const inner = JSON.parse(parsed.summary);
+          parsed.summary = inner.summary ?? parsed.summary;
+        } catch { /* keep as is */ }
+      }
+  
+      // ✅ Filter issues — only keep relevant ones with real method names
+      if (parsed.issues?.length) {
+        parsed.issues = parsed.issues.filter((issue: any) =>
+          issue.message &&
+          issue.message.length > 10 &&
+          issue.severity !== 'Info'
+        );
+      }
+  
+      // ✅ Filter impacted areas — only keep ones with specific method/area names
+      if (parsed.impactedAreas?.length) {
+        parsed.impactedAreas = parsed.impactedAreas.filter((impact: any) =>
+          impact.area &&
+          impact.area !== 'Unknown' &&
+          impact.area !== 'N/A' &&
+          impact.description?.length > 10
+        );
+      }
+  
+      return parsed;
     } catch {
-      // Fallback: return raw text as summary
       return {
         summary: rawText,
         issues: [],
@@ -187,5 +227,190 @@ export class AiReviewService {
   
     console.log('✅ Your available Gemini models:', models);
     return models ?? [];
+  }
+  // ── Diff-only prompt
+  buildPromptDiff(fileType: string, filePath: string, diff: string): string {
+    return `File: ${filePath}
+  
+  ## Changed lines (+ added, - removed):
+  \`\`\`
+  ${diff}
+  \`\`\`
+  
+  Analyze this diff thoroughly. Report every issue found — syntax, logic, security, performance, structure.
+  Do not skip anything.
+  
+  ${this.getInstructions(fileType, 'diff')}`;
+  }
+  
+  buildPromptFull(fileType: string, filePath: string, diff: string, fullContent: string): string {
+    const trimmedFull = fullContent.length > 8000
+      ? fullContent.substring(0, 8000) + '\n\n... (file truncated at 8000 chars)'
+      : fullContent;
+  
+    return `File: ${filePath}
+  
+  ## CHANGED lines (+ added, - removed) — analyze these first:
+  \`\`\`
+  ${diff}
+  \`\`\`
+  
+  ## FULL file content — use this to find ALL callers and check consistency:
+  \`\`\`
+  ${trimmedFull}
+  \`\`\`
+  
+  Analyze thoroughly:
+  1. Every issue in the changed lines — syntax, logic, hardcoded values, wrong aliases
+  2. Every method in the full file that calls or depends on the changed code
+  3. Any inconsistency between the change and the rest of the file
+  
+  Report everything found. Do not skip any category.
+  
+  ${this.getInstructions(fileType, 'full')}`;
+  }
+  private getInstructions(fileType: string, mode: 'diff' | 'full'): string {
+
+    const outputRules = `
+  STRICT RULES:
+  - Summary: max 3 sentences. What changed, what is broken, what is at risk.
+  - Issues: report EVERY real problem found — syntax, logic, security, performance, naming, structure.
+  - Do NOT skip issues because they seem minor — report everything found in the code.
+  - Each issue must mention the SPECIFIC method/variable/column/line involved.
+  - impactedAreas: every method/function/procedure that calls or depends on changed code.
+  - Use EXACT names from the file — no generic entries.
+  - No markdown. No backticks. Pure JSON only.
+  `;
+  
+    const fullModeNote = mode === 'full'
+      ? `You have the FULL file content.
+  - Scan every line for anything broken, risky, or inconsistent introduced by the diff
+  - Find every method/function that calls or depends on the changed code
+  - Check variable names, parameter names, aliases, column names for consistency throughout the file
+  - Look for anything that will fail at runtime, compile time, or produce wrong results
+  `
+      : `You have changed lines only. Analyze what is added/removed and flag every issue found.`;
+  
+    const impactAnalysis = mode === 'full' ? `
+  Impact Analysis:
+  Scan the FULL file and report:
+  - Every method/function that calls the changed method — exact name
+  - Every place that passes arguments to the changed method — will args still match?
+  - Every variable/alias/column reference that depends on the changed code
+  - Any place where removed code is still being referenced
+  - Anything that will silently return wrong data without throwing an error
+  ` : `
+  Impact Analysis:
+  Based on the diff:
+  - Which callers are likely affected by this change
+  - What could break at runtime or compile time
+  - Any silent failures that could occur
+  `;
+  
+    const jsonSchema = `
+  Return ONLY valid JSON (no markdown, no backticks):
+  {
+    "summary": "3 sentences: what changed | what is broken | what is at risk",
+    "issues": [
+      {
+        "severity": "Critical|High|Medium|Low",
+        "type": "SyntaxError|LogicError|BrokenReference|NamingMismatch|HardcodedValue|NullSafety|Performance|Security|CodeQuality|BestPractice|AliasMismatch|ParameterMismatch|WrongData",
+        "lineNumber": "line number from diff or file",
+        "message": "specific description — name the exact method/variable/column involved",
+        "suggestion": "exact fix with code if possible",
+        "codeExample": "corrected snippet or null"
+      }
+    ],
+    "impactedAreas": [
+      {
+        "area": "ExactMethodName() or ClassName.MethodName() from the file",
+        "impactType": "BreakingChange|PotentialBug|DataIssue|WrongData|PerformanceDegradation|DataLoss|TestFailure|UIBroken|MemoryLeak|WrongBehavior|CompilationError|SyntaxError",
+        "severity": "Critical|High|Medium|Low",
+        "description": "what exactly breaks, with line reference",
+        "recommendation": "exact change needed to fix"
+      }
+    ],
+    "optimizedCode": "full corrected version of changed block or null",
+    "overallScore": "Good|Needs Improvement|Critical"
+  }`;
+  
+    // ✅ Generic instructions — same depth for all file types
+    const genericReview = `
+  Analyze ALL of the following — do not skip any category:
+  
+  CODE ISSUES:
+  - Syntax errors (trailing commas, missing brackets, wrong operators)
+  - Logic errors (wrong conditions, off-by-one, inverted checks)
+  - Hardcoded values that should be parameters or config
+  - Removed parameters still referenced inside the method body
+  - Variable/parameter renamed but old name still used elsewhere
+  - Wrong number of arguments passed to a method after signature change
+  - Null reference risks — objects used without null check
+  - Missing error handling or exception swallowing
+  - Async/await issues — blocking calls, missing await
+  - Unused variables or dead code introduced
+  
+  QUERY ISSUES (if SQL or C# with SQL strings):
+  - Trailing comma before FROM/WHERE/GROUP BY/ORDER BY
+  - Missing comma between SELECT columns  
+  - Hardcoded filter value replacing a dynamic parameter
+  - Column alias used in WHERE/ORDER BY not defined in SELECT
+  - JOIN condition referencing wrong table alias
+  - Parameter removed from method but still used in query string
+  - Query returns wrong columns after rename
+  - N+1 query patterns
+  
+  STRUCTURE ISSUES:
+  - Method too long after change
+  - Breaking change to public/private API
+  - Callers passing wrong argument count or type after signature change
+  - Return type mismatch
+  `;
+  
+    const typeInstructions: Record<string, string> = {
+  
+      'CSharp': `You are an expert .NET Core / C# and SQL reviewer.
+  ${outputRules}
+  ${fullModeNote}
+  ${genericReview}
+  ${impactAnalysis}
+  ${jsonSchema}`,
+  
+      'SQL': `You are an expert SQL and database reviewer.
+  ${outputRules}
+  ${fullModeNote}
+  ${genericReview}
+  ${impactAnalysis}
+  ${jsonSchema}`,
+  
+      'TypeScript': `You are an expert Angular / TypeScript reviewer.
+  ${outputRules}
+  ${fullModeNote}
+  ${genericReview}
+  ${impactAnalysis}
+  ${jsonSchema}`,
+  
+      'HTML': `You are an expert Angular HTML template reviewer.
+  ${outputRules}
+  ${fullModeNote}
+  ${genericReview}
+  ${impactAnalysis}
+  ${jsonSchema}`,
+  
+      'Other': `You are an expert code reviewer.
+  ${outputRules}
+  ${fullModeNote}
+  ${genericReview}
+  ${impactAnalysis}
+  ${jsonSchema}`
+    };
+  
+    // ✅ Fallback — any unknown file type gets full generic review
+    return typeInstructions[fileType] ?? `You are an expert code reviewer.
+  ${outputRules}
+  ${fullModeNote}
+  ${genericReview}
+  ${impactAnalysis}
+  ${jsonSchema}`;
   }
 }

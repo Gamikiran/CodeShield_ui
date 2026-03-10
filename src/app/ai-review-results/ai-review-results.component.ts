@@ -43,6 +43,7 @@ export class AiReviewResultsComponent implements OnDestroy {
 
   reviewResponse: ReviewResponse | null = null;
   loading = false;
+  fullFileReview = false; 
   error: string | null = null;
   loadStep = 0;
   reviewedAt = '';
@@ -130,59 +131,78 @@ export class AiReviewResultsComponent implements OnDestroy {
       const files: FileReviewResult[] = [];
   
       for (const file of diffsResponse.files) {
+        const trimmedDiff = this.trimDiff(
+          file.maskedDiff || file.diff,  // ✅ use masked version
+          1500
+        );
   
-        // ✅ Trim diff to max 1500 chars to save quota
-        const trimmedDiff = this.trimDiff(file.diff, 1500);
-        const prompt = this.buildPrompt(file.fileType, file.filePath, trimmedDiff);
+        // ✅ Build prompt based on selected mode
+        let prompt: string;
+        if (this.fullFileReview && file.fullContent) {
+          prompt = this.aiReviewService.buildPromptFull(
+            file.fileType,
+            file.filePath,
+            trimmedDiff,
+            file.maskedFullContent || file.fullContent  // ✅ use masked full content
+          );
+        } else {
+          prompt = this.aiReviewService.buildPromptDiff(
+            file.fileType,
+            file.filePath,
+            trimmedDiff
+          );
+        }
   
         try {
           const aiText = await this.aiReviewService.callGemini(prompt);
   
           files.push({
-            filePath: file.filePath,
-            fileType: file.fileType,
-            diff: file.diff,
+            filePath:     file.filePath,
+            fileType:     file.fileType,
+            diff:         file.diff,
+            fullContent:  file.fullContent,
             aiSuggestion: aiText,
             parsedReview: this.aiReviewService.parseAISuggestion(aiText) ?? undefined,
-            isDeleted: file.isDeleted,
-            isNew: file.isNew,
-            isRenamed: file.isRenamed,
-            isExpanded: files.length === 0,
-            showDiff: false
+            isDeleted:    file.isDeleted,
+            isNew:        file.isNew,
+            isRenamed:    file.isRenamed,
+            isExpanded:   files.length === 0,
+            showDiff:     false,
+            reviewMode:   this.fullFileReview ? 'full' : 'diff',
+            tablesMasked: file.tablesMasked
           });
   
-          // ✅ Small delay between files to avoid rate limiting
           if (diffsResponse.files.indexOf(file) < diffsResponse.files.length - 1) {
             await this.delay(1500);
           }
   
         } catch (fileErr: any) {
-          // ✅ Don't fail entire review if one file fails
           files.push({
-            filePath: file.filePath,
-            fileType: file.fileType,
-            diff: file.diff,
+            filePath:    file.filePath,
+            fileType:    file.fileType,
+            diff:        file.diff,
             aiSuggestion: '',
             parsedReview: {
               summary: `Review skipped: ${fileErr.message}`,
               issues: [],
               overallScore: 'Needs Improvement'
             },
-            isDeleted: file.isDeleted,
-            isNew: file.isNew,
-            isRenamed: file.isRenamed,
+            isDeleted:  file.isDeleted,
+            isNew:      file.isNew,
+            isRenamed:  file.isRenamed,
             isExpanded: false,
-            showDiff: false
+            showDiff:   false,
+            reviewMode: this.fullFileReview ? 'full' : 'diff'
           });
         }
       }
   
       clearInterval(this.stepInterval);
       this.reviewResponse = {
-        projectId: this.projectId,
+        projectId:       this.projectId,
         mergeRequestIid: this.mergeRequest.iid,
         files,
-        reviewedAt: new Date().toISOString()
+        reviewedAt:      new Date().toISOString()
       };
       this.reviewedAt = new Date().toLocaleString();
       this.loading = false;
@@ -193,16 +213,42 @@ export class AiReviewResultsComponent implements OnDestroy {
       this.loading = false;
     }
   }
+  getSummaryPoints(summary: string): string[] {
+    if (!summary) return [];
   
-  // ✅ Only send changed lines (+) to save tokens
+    // ✅ If entire summary is still a JSON blob — parse it first
+    let cleanSummary = summary.trim();
+    
+    if (cleanSummary.startsWith('{')) {
+      try {
+        const parsed = JSON.parse(cleanSummary);
+        cleanSummary = parsed.summary ?? cleanSummary;
+      } catch {
+        // Try to extract just the summary value with regex
+        const match = cleanSummary.match(/"summary"\s*:\s*"([^"]+)"/);
+        if (match) cleanSummary = match[1];
+      }
+    }
+  
+    // Split into sentences
+    return cleanSummary
+      .split(/(?<=[.!?])\s+/)
+      .map(s => s.trim())
+      .filter(s => s.length > 10 && !s.startsWith('{') && !s.startsWith('"'));
+  }
+  getImpactPoints(description: string): string[] {
+    if (!description) return [];
+    return description
+      .split(/(?<=[.!?])\s+|;\s*/)
+      .map(s => s.trim())
+      .filter(s => s.length > 8);
+  }
+
   private trimDiff(diff: string, maxChars: number): string {
     if (!diff) return '';
-  
-    // Keep only added lines and context
     const importantLines = diff.split('\n')
-      .filter(line => line.startsWith('+') || line.startsWith('@@'))
+      .filter(line => line.startsWith('+') || line.startsWith('@@') || line.startsWith('-'))
       .join('\n');
-  
     const trimmed = importantLines.length > 0 ? importantLines : diff;
     return trimmed.length > maxChars
       ? trimmed.substring(0, maxChars) + '\n... (truncated)'
@@ -212,6 +258,39 @@ export class AiReviewResultsComponent implements OnDestroy {
   private delay(ms: number): Promise<void> {
     return new Promise(resolve => setTimeout(resolve, ms));
   }
+  
+  resetAndSwitch(): void {
+    this.reviewResponse = null;
+    this.error = null;
+    this.loadStep = 0;
+    this.fullFileReview = !this.fullFileReview;
+  }
+  getImpactTypeIcon(type: string): string {
+    const icons: Record<string, string> = {
+      'BreakingChange':        '💔',
+      'PotentialBug':          '🐛',
+      'DataIssue':             '🗃️',
+      'WrongData':             '❌',
+      'PerformanceDegradation':'🐢',
+      'DataLoss':              '🔥',
+      'TestFailure':           '🧪',
+      'UIBroken':              '🖥️',
+      'MemoryLeak':            '💧',
+      'WrongBehavior':         '⚠️'
+    };
+    return icons[type] ?? '⚠️';
+  }
+  
+  getImpactTypeClass(type: string): string {
+    const breaking = ['BreakingChange', 'DataLoss', 'UIBroken'];
+    const high     = ['PotentialBug', 'WrongData', 'TestFailure'];
+    const medium   = ['PerformanceDegradation', 'MemoryLeak', 'WrongBehavior', 'DataIssue'];
+  
+    if (breaking.includes(type)) return 'impact-breaking';
+    if (high.includes(type))     return 'impact-high';
+    return 'impact-medium';
+  }
+  
   
   buildPrompt(fileType: string, filePath: string, diff: string): string {
     const header = `File: ${filePath}\nChanges:\n${diff}\n\n`;
